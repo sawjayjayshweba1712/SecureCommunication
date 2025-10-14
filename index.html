@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Blockchain Auth - Home</title>
+  <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background:#f7f9fc; }
+    .card { max-width:700px; margin:auto; background:#fff; padding:28px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
+    h1 { text-align:center; color:#222; }
+    .row { margin:12px 0; display:flex; gap:10px; align-items:center; }
+    button { padding:10px 14px; border:0; border-radius:6px; cursor:pointer; }
+    #connectButton { background:#1e88e5; color:#fff; }
+    #registerButton { background:#43a047; color:#fff; }
+    #authButton { background:#ffb300; color:#222; }
+    #deactivateButton { background:#ef5350; color:#fff; }
+    .status { padding:10px; border-radius:6px; margin-bottom:10px; }
+    .ok { background:#e8f5e9; color:#1b5e20; border:1px solid #c8e6c9; }
+    .err { background:#ffebee; color:#b71c1c; border:1px solid #ffcdd2; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Privacy-Preserving Auth — Portal</h1>
+
+    <div id="status" class="status err">Status: Wallet Disconnected.</div>
+    <div class="row">
+      <div style="flex:1;">Current Account: <strong id="currentAccount">N/A</strong></div>
+      <div>Network: <strong id="networkName">N/A</strong></div>
+    </div>
+
+    <div class="row">
+      <button id="connectButton" onclick="connectWallet()">Connect MetaMask</button>
+      <button id="disconnectButton" onclick="disconnect()" style="display:none;">Disconnect</button>
+    </div>
+
+    <hr />
+    <h3>Registration & Authentication</h3>
+    <div class="row">
+      <button id="registerButton" onclick="registerUser()">Register</button>
+      <button id="authButton" onclick="authenticateUser()">Authenticate (Login)</button>
+      <button id="deactivateButton" onclick="deactivateAccount()">Deactivate My Account</button>
+    </div>
+    <div id="registerMessage" class="status" style="display:none;"></div>
+    <div id="authMessage" class="status" style="display:none;"></div>
+
+    <hr />
+    <h3>Profile</h3>
+    <div>
+      <label>Profile CID (IPFS) or public pointer</label>
+      <input id="profileCid" type="text" placeholder="Qm..." style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;">
+      <div class="row"><button onclick="setProfileCid()">Save Profile CID</button></div>
+      <div id="profileMessage" class="status" style="display:none;"></div>
+    </div>
+  </div>
+
+  <script>
+    const CONTRACT_ADDRESS = "0xB8e7594f21d3093ce18B274ddF1288E87273c3d3";
+    const CONTRACT_ABI = [
+      "function register() public",
+      "function deactivateAccount() public",
+      "function authenticate(address user) external view returns (bool)",
+      "function setProfileCID(string calldata cid) external",
+      "function isRegistered(address user) external view returns (bool)"
+    ];
+
+    let provider, signer, contract, currentAccount;
+
+    function el(id){ return document.getElementById(id); }
+    function showStatus(t, ok=true){ el('status').textContent='Status: '+t; el('status').className='status '+(ok?'ok':'err'); }
+    function showMsg(id,t,ok=true){ const m=el(id); m.style.display='block'; m.textContent=t; m.className='status '+(ok?'ok':'err'); setTimeout(()=>m.style.display='none',5000); }
+
+    async function connectWallet(){
+      if(!window.ethereum){showStatus('MetaMask not installed',false);return;}
+      provider=new ethers.providers.Web3Provider(window.ethereum);await provider.send("eth_requestAccounts",[]);
+      signer=provider.getSigner();currentAccount=await signer.getAddress();
+      contract=new ethers.Contract(CONTRACT_ADDRESS,CONTRACT_ABI,signer);
+      const n=await provider.getNetwork();el('currentAccount').textContent=currentAccount;el('networkName').textContent=n.name;showStatus('Connected',true);
+      el('connectButton').style.display='none';el('disconnectButton').style.display='inline-block';
+    }
+    function disconnect(){provider=null;signer=null;contract=null;currentAccount=null;el('currentAccount').textContent='N/A';el('networkName').textContent='N/A';showStatus('Disconnected',false);el('connectButton').style.display='inline-block';el('disconnectButton').style.display='none';}
+    async function registerUser(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try{const tx=await contract.register();showMsg('registerMessage','Confirm in MetaMask');await tx.wait();showMsg('registerMessage','Registered successfully');}catch(e){showMsg('registerMessage',e.message,false);}}
+    async function authenticateUser(){if(!contract){showMsg('authMessage','Connect wallet first',false);return;}const ok=await contract.authenticate(currentAccount);if(ok){showMsg('authMessage','Authenticated! Redirecting...');setTimeout(()=>window.location.href='dashboard.html',1000);}else{showMsg('authMessage','Not registered',false);}}
+    async function deactivateAccount(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}const tx=await contract.deactivateAccount();await tx.wait();showMsg('registerMessage','Account deactivated');}
+    async function setProfileCid(){if(!contract){showMsg('profileMessage','Connect wallet first',false);return;}const cid=el('profileCid').value.trim();if(!cid){showMsg('profileMessage','Enter CID',false);return;}const tx=await contract.setProfileCID(cid);await tx.wait();showMsg('profileMessage','Profile CID saved');}
+  </script>
+</body>
+</html>

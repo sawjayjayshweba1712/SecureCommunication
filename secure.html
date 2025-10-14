@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Organization Secure Communication</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      margin: 0;
+      font-family: "Poppins", sans-serif;
+      background-color: #f4f6fb;
+      color: #2f3640;
+    }
+    header {
+      background-color: #273c75;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+    .container {
+      padding: 30px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .section {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 25px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    }
+    .section h2 {
+      color: #273c75;
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+    .message-box {
+      background-color: #f0f4ff;
+      border-left: 4px solid #40739e;
+      padding: 10px 15px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    .secret {
+      background-color: #ffeaa7;
+      border-left: 4px solid #e1b12c;
+      padding: 10px 15px;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+    .announcement {
+      background-color: #dff9fb;
+      border-left: 4px solid #00a8ff;
+      padding: 10px 15px;
+      border-radius: 8px;
+    }
+    .chat-input {
+      display: flex;
+      margin-top: 15px;
+    }
+    .chat-input input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      outline: none;
+      font-size: 14px;
+    }
+    .chat-input button {
+      background-color: #273c75;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      margin-left: 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .chat-input button:hover {
+      background-color: #40739e;
+    }
+    footer {
+      text-align: center;
+      padding: 15px;
+      color: #7f8fa6;
+      font-size: 13px;
+    }
+    .logout-btn, .admin-btn { /* Style both for uniformity */
+      display: block;
+      background-color: #c23616;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 20px;
+      margin: 20px auto 10px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: 0.3s;
+    }
+    .admin-btn {
+        background-color: #273c75; /* Differentiate admin button */
+        margin-bottom: 20px;
+    }
+    .logout-btn:hover {
+      background-color: #e84118;
+    }
+    .admin-btn:hover {
+        background-color: #40739e;
+    }
+  </style>
+</head>
+<body>
+  <header>🔒 Secure Organization Portal</header>
+
+  <div class="container">
+    <div class="section">
+      <h2>Welcome to the Secure Intranet</h2>
+      <p>
+        This platform is for internal communication and data exchange between verified members of the organization.
+        All activities are encrypted and logged on-chain for transparency.
+      </p>
+    </div>
+
+    <button class="admin-btn" onclick="window.location.href='admin.html'">
+        Admin Management 🔐
+    </button>
+    <div class="section">
+      <h2>🔐 Confidential Communications</h2>
+      <div class="message-box">
+        <strong>Admin:</strong> Meeting scheduled at 10:00 AM tomorrow. Only project leads should attend.
+      </div>
+      <div class="message-box">
+        <strong>Security:</strong> New access policy will be rolled out next week. Please review your key permissions.
+      </div>
+      <div class="secret">
+        🔸 Secret Transmission: "Operation Eclipse" deployment key rotation planned for 18th Oct 2025.
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>📢 Internal Announcements</h2>
+      <div class="announcement">
+        🎯 System maintenance on 15 Oct, 22:00 UTC — expect temporary downtime of decentralized nodes.
+      </div>
+      <div class="announcement">
+        💡 Remember to back up your personal encryption keys before next login cycle.
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>💬 Send Secure Message</h2>
+      <div id="chatArea"></div>
+      <div class="chat-input">
+        <input id="msgInput" type="text" placeholder="Type your secure message..." />
+        <button onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+
+  <footer>© 2025 Confidential | Authorized Personnel Only</footer>
+
+  <script>
+    function sendMessage() {
+      const msg = document.getElementById("msgInput").value.trim();
+      if (!msg) return;
+      const box = document.createElement("div");
+      box.className = "message-box";
+      box.innerHTML = `<strong>You:</strong> ${msg}`;
+      document.getElementById("chatArea").appendChild(box);
+      document.getElementById("msgInput").value = "";
+    }
+
+    function logout() {
+      alert("Logging out and returning to login page...");
+      window.location.href = "index.html";
+    }
+  </script>
+</body>
+</html>

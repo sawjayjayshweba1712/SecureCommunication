@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <style>
+    body { font-family:Arial,sans-serif;background:#f2f6fb;padding:40px; }
+    .wrap { max-width:800px;margin:auto;background:#fff;padding:28px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.06); }
+    h1 { margin-bottom:8px; }
+    button { padding:10px 14px;border-radius:8px;border:0;background:#1e88e5;color:#fff;cursor:pointer; }
+    .field { background:#f8fafc;padding:12px;border-radius:8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Secure Dashboard</h1>
+    <p>This dashboard reads on-chain account info and profile pointer.</p>
+    <div class="field"><b>Wallet:</b> <span id="addr"></span></div>
+    <div class="field"><b>Balance:</b> <span id="balance"></span></div>
+    <div class="field"><b>Registered:</b> <span id="registered"></span></div>
+    <div class="field"><b>Role:</b> <span id="role"></span></div>
+    <div class="field"><b>Profile CID:</b> <span id="profileCid"></span></div>
+    <div style="margin-top:15px;">
+      <button onclick="goBack()">Back</button>
+      <button onclick="goNext()">Next</button>
+    </div>
+  </div>
+
+  <script>
+    const contractAddress="0xB8e7594f21d3093ce18B274ddF1288E87273c3d3";
+    const contractABI=[
+      "function isRegistered(address user) view returns (bool)",
+      "function getRole(address user) view returns (string memory)",
+      "function getProfileCID(address user) view returns (string memory)"
+    ];
+    async function load(){
+      const provider=new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts",[]);
+      const signer=provider.getSigner();const addr=await signer.getAddress();
+      document.getElementById('addr').textContent=addr;
+      const bal=await provider.getBalance(addr);
+      document.getElementById('balance').textContent=ethers.utils.formatEther(bal)+" ETH";
+      const c=new ethers.Contract(contractAddress,contractABI,provider);
+      try{const r=await c.isRegistered(addr);document.getElementById('registered').textContent=r?'Yes':'No';const role=await c.getRole(addr);document.getElementById('role').textContent=role||'N/A';const cid=await c.getProfileCID(addr);document.getElementById('profileCid').textContent=cid||'N/A';}catch(e){console.log(e);}
+    }
+    function goBack(){window.location.href="index.html";}
+    function goNext(){window.location.href="secure.html";}
+    window.onload=load;
+  </script>
+</body>
+</html>

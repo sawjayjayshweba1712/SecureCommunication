@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Management - Contract Owner Only</title>
+  <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background:#e0f7fa; color:#222; }
+    .card { max-width:800px; margin:auto; background:#fff; padding:30px; border-radius:15px; box-shadow:0 8px 25px rgba(0,0,0,0.1); }
+    h1 { text-align:center; color:#006064; }
+    h2 { color:#00838f; border-bottom:2px solid #e0f7fa; padding-bottom:5px; margin-top:20px; }
+    .status { padding:12px; border-radius:8px; margin-bottom:15px; text-align:center; }
+    .ok { background:#e8f5e9; color:#1b5e20; border:1px solid #c8e6c9; }
+    .err { background:#ffebee; color:#b71c1c; border:1px solid #ffcdd2; }
+    .message { padding:8px; margin-top:10px; border-radius:4px; font-size:14px; }
+    input[type="text"], select { padding:10px; border-radius:6px; border:1px solid #ddd; width:calc(100% - 130px); margin-right:10px; }
+    button { padding:10px 15px; border:0; border-radius:6px; cursor:pointer; font-weight:600; }
+    .action-row { display:flex; align-items:center; margin-top:10px; gap:10px; }
+    #removeUserBtn { background:#ef5350; color:#fff; }
+    #removeUserBtn:hover { background:#d32f2f; }
+    #assignRoleBtn { background:#43a047; color:#fff; }
+    #assignRoleBtn:hover { background:#2e7d32; }
+    #backBtn { background:#78909c; color:#fff; margin-top:30px; }
+    #ownerInfo { padding:10px; background:#f0f4c3; border-radius:8px; margin-bottom:20px; font-size:14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🔑 Contract Administration</h1>
+
+    <div id="status" class="status err">Initializing...</div>
+
+    <div id="adminTools" style="display: none;">
+        <div id="ownerInfo">
+            ✅ **Access Granted.** You are the Contract Owner.
+            <p>Contract Owner Address: <strong id="ownerAddress">Loading...</strong></p>
+        </div>
+
+        <hr />
+
+        <section id="remove-user-section">
+            <h2>User Deletion</h2>
+            <div class="action-row">
+                <input type="text" id="userAddressToRemove" placeholder="Ethereum Address to Remove (0x...)" style="flex-grow: 1;">
+                <button id="removeUserBtn" onclick="removeUser()">Remove User</button>
+            </div>
+            <div id="removeStatus" class="message" style="display:none;"></div>
+        </section>
+
+        <hr />
+
+        <section id="assign-role-section">
+            <h2>Assign Role</h2>
+            <div class="action-row">
+                <input type="text" id="userAddressToRole" placeholder="Ethereum Address to Assign Role (0x...)" style="flex-grow: 1;">
+                <select id="roleSelect" style="width: 150px;">
+                    <option value="member">member</option>
+                    <option value="moderator">moderator</option>
+                    <option value="admin">admin</option>
+                </select>
+                <button id="assignRoleBtn" onclick="assignRole()">Set Role</button>
+            </div>
+            <div id="roleStatus" class="message" style="display:none;"></div>
+        </section>
+    </div>
+
+    <button id="backBtn" onclick="window.location.href='secure.html'">← Back to Secure Area</button>
+  </div>
+
+  <script>
+    // Configuration copied from index.html
+    const CONTRACT_ADDRESS = "0xB8e7594f21d3093ce18B274ddF1288E87273c3d3";
+    const CONTRACT_ABI = [
+      "function removeUser(address user) public",
+      "function setRole(address user, string calldata role) external",
+      "function owner() public view returns (address)", // Crucial for verification
+    ];
+
+    let provider, signer, contract, currentAccount;
+
+    // UI Helpers (copied and adapted from index.html)
+    function el(id){ return document.getElementById(id); }
+    function showStatus(text, ok=true) {
+      const s = el('status');
+      s.textContent = text;
+      s.className = 'status ' + (ok ? 'ok' : 'err');
+    }
+    function showMsg(id, text, ok=true) {
+      const d = el(id);
+      d.style.display = 'block';
+      d.textContent = text;
+      d.className = 'message ' + (ok ? 'ok' : 'err');
+      // No timeout for admin actions, so status stays visible
+    }
+
+    // === CORE ADMIN LOGIC ===
+    async function initAdminPage() {
+      if (typeof window.ethereum === "undefined") {
+        showStatus("MetaMask not installed. Redirecting...", false);
+        setTimeout(() => { window.location.href = 'secure.html'; }, 3000);
+        return;
+      }
+
+      try {
+        showStatus('Connecting wallet and verifying access...');
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        currentAccount = await signer.getAddress();
+
+        // Use a provider contract for reading owner, and a signer contract for transactions
+        const providerContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+        contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+        const contractOwner = await providerContract.owner();
+
+        // Display owner address for transparency
+        el('ownerAddress').textContent = contractOwner;
+
+        // --- 🔑 Access Control Check ---
+        if (currentAccount.toLowerCase() === contractOwner.toLowerCase()) {
+          showStatus('Admin Access Verified!', true);
+          el('adminTools').style.display = 'block';
+        } else {
+          showStatus("❌ Access Denied. You are not the Contract Owner. Redirecting...", false);
+          setTimeout(() => {
+            window.location.href = 'secure.html'; // Block access and redirect
+          }, 3000);
+        }
+      } catch (error) {
+        console.error("Admin verification error:", error);
+        showStatus(`Error: Could not connect or verify ownership. ${error.message}`, false);
+      }
+    }
+
+    // Admin action: Remove User
+    async function removeUser(){
+      const target = el('userAddressToRemove').value.trim();
+      if(!contract) { showMsg('removeStatus', 'Wallet not connected.', false); return; }
+      if(!ethers.utils.isAddress(target)){ showMsg('removeStatus', 'Invalid Ethereum address.', false); return; }
+
+      try {
+        showMsg('removeStatus', 'Confirm Remove User transaction in MetaMask...', true);
+        // This transaction will fail in the contract if the user is not the owner (modifier: onlyOwner)
+        const tx = await contract.removeUser(target);
+        await tx.wait();
+        showMsg('removeStatus', `✅ User ${target} removed successfully.`, true);
+      } catch(err){
+        console.error(err);
+        showMsg('removeStatus', err.error?.message || err.message || 'Transaction failed. Only owner can execute.', false);
+      }
+    }
+
+    // Admin action: Set Role
+    async function assignRole(){
+      const target = el('userAddressToRole').value.trim();
+      const role = el('roleSelect').value.trim();
+      if(!contract) { showMsg('roleStatus', 'Wallet not connected.', false); return; }
+      if(!ethers.utils.isAddress(target)){ showMsg('roleStatus', 'Invalid Ethereum address.', false); return; }
+
+      try {
+        showMsg('roleStatus', `Confirm Set Role "${role}" transaction in MetaMask...`, true);
+        // This transaction will fail in the contract if the user is not the owner (modifier: onlyOwner)
+        const tx = await contract.setRole(target, role);
+        await tx.wait();
+        showMsg('roleStatus', `✅ Role "${role}" set for ${target} successfully.`, true);
+      } catch(err){
+        console.error(err);
+        showMsg('roleStatus', err.error?.message || err.message || 'Transaction failed. Only owner can execute.', false);
+      }
+    }
+
+    window.onload = initAdminPage;
+
+    // Optional: react to account/network change (copied from index.html)
+    if (typeof window.ethereum !== 'undefined') {
+      window.ethereum.on('accountsChanged', () => window.location.reload());
+      window.ethereum.on('chainChanged', () => window.location.reload());
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+# Ignore Node Modules and build artifacts
+node_modules/
+/artifacts
+
+# CRITICAL: Ignore environment variables (private key)
+.env
