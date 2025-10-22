@@ -205,6 +205,8 @@
   <!-- Ethers.js -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.0/dist/ethers.min.js"></script>
 
+  <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+
   <script>
     // Existing chat
     function sendMessage() {
@@ -222,13 +224,15 @@
       window.location.href = "index.html";
     }
 
-    // -------------------- BLOCKCHAIN WALL --------------------
-    const CONTRACT_ADDRESS = "0x2741f7D8C51365d3B8b656a4214d069ec141E959"; // Replace with your deployed contract address
+    // -------------------- BLOCKCHAIN WALL (Ethers v5) --------------------
+    
+    // ⚠️ 1. PASTE YOUR NEW PublicWall CONTRACT ADDRESS HERE
+    const CONTRACT_ADDRESS = "0x338Fb37d61751Ae464356DDE02bBF292f1eBC91A"; 
 
     const ABI = [
-      "function addPost(string _text) external",
+      "function addPost(string calldata _text) external",
       "function getPostCount() view returns (uint256)",
-      "function getPost(uint256 index) view returns (address author, string text, uint256 timestamp)",
+      "function getPost(uint256 index) view returns (address author, string memory text, uint256 timestamp)",
       "event PostCreated(uint256 indexed index, address indexed author, uint256 timestamp, string text)"
     ];
 
@@ -248,25 +252,32 @@
         connectButton.onclick = () => window.open("https://metamask.io/");
         return;
       }
-      provider = new ethers.BrowserProvider(window.ethereum);
+      // Ethers v5 provider
+      provider = new ethers.providers.Web3Provider(window.ethereum);
       connectButton.onclick = connectWallet;
-      contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
-      await loadPosts();
+      
+      // Create a read-only contract instance to load posts
+      const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+      await loadPosts(readOnlyContract);
     }
 
     async function connectWallet() {
       try {
+        // Ethers v5 request accounts
         await provider.send("eth_requestAccounts", []);
-        signer = await provider.getSigner();
+        signer = provider.getSigner(); // Ethers v5 get signer
+        
         const addr = await signer.getAddress();
         walletAddrSpan.textContent = addr;
         connectButton.style.display = "none";
         postComposer.style.display = "block";
-        contract = contract.connect(signer);
+        
+        // Create contract instance with signer for transactions
+        contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
 
-        const eventFilter = contract.filters.PostCreated();
-        contract.on(eventFilter, (index, author, timestamp, text) => {
-          prependPost({ author, text, timestamp: Number(timestamp) });
+        // Listen for new posts
+        contract.on("PostCreated", (index, author, timestamp, text, event) => {
+          prependPost({ author, text, timestamp: timestamp.toNumber() });
         });
       } catch (err) {
         console.error(err);
@@ -275,8 +286,11 @@
     }
 
     postButton.addEventListener("click", async () => {
+      if (!contract) return alert("Please connect your wallet first.");
+      
       const message = postInput.value.trim();
       if (!message) return alert("Please enter something to post.");
+      
       try {
         postingStatus.textContent = "Posting...";
         const tx = await contract.addPost(message);
@@ -291,19 +305,21 @@
       }
     });
 
-    async function loadPosts() {
+    async function loadPosts(contractInstance) {
       postList.innerHTML = "<p>Loading posts...</p>";
       try {
-        const count = Number(await contract.getPostCount());
+        const countBigNum = await contractInstance.getPostCount();
+        const count = countBigNum.toNumber(); // Ethers v5 uses BigNumber
+        
         postList.innerHTML = "";
         for (let i = count - 1; i >= 0; i--) {
-          const [author, text, ts] = await contract.getPost(i);
-          appendPostToUI({ author, text, timestamp: Number(ts) });
+          const [author, text, ts] = await contractInstance.getPost(i);
+          appendPostToUI({ author, text, timestamp: ts.toNumber() }); // Ethers v5 uses BigNumber
         }
         if (count === 0) postList.innerHTML = "<p>No posts yet. Be the first!</p>";
       } catch (err) {
         console.error(err);
-        postList.innerHTML = "<p>Unable to load posts. Is Ganache running?</p>";
+        postList.innerHTML = "<p>Unable to load posts. Is the contract address correct and deployed to Ganache?</p>";
       }
     }
 
@@ -344,5 +360,7 @@
 
     window.addEventListener("DOMContentLoaded", init);
   </script>
+</body>
+</html>
 </body>
 </html>
