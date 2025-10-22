@@ -3,222 +3,234 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Organization Secure Communication</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
+  <title>University Public Wall</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
+    :root {
+      --primary-color: #273c75;
+      --primary-hover: #40739e;
+      --bg-color: #f4f6fb;
+      --card-bg: #ffffff;
+      --text-color: #2f3640;
+      --text-light: #7f8fa6;
+      --border-color: #dfe4ea;
+      --success-color: #43a047;
+      --danger-color: #c23616;
+      --shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+    }
     body {
       margin: 0;
       font-family: "Poppins", sans-serif;
-      background-color: #f4f6fb;
-      color: #2f3640;
+      background-color: var(--bg-color);
+      color: var(--text-color);
     }
     header {
-      background-color: #273c75;
+      background-color: var(--primary-color);
       color: white;
-      padding: 20px;
-      text-align: center;
-      font-size: 20px;
+      padding: 18px 30px;
+      font-size: 22px;
       font-weight: 600;
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    header .header-controls {
+      display: flex;
+      gap: 15px;
     }
     .container {
       padding: 30px;
-      max-width: 900px;
-      margin: 0 auto;
+      max-width: 800px;
+      margin: 20px auto;
     }
-    .section {
-      background: white;
-      border-radius: 15px;
-      padding: 25px;
-      margin-bottom: 25px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-    }
-    .section h2 {
-      color: #273c75;
-      font-size: 18px;
-      margin-bottom: 10px;
-    }
-    .message-box {
-      background-color: #f0f4ff;
-      border-left: 4px solid #40739e;
-      padding: 10px 15px;
-      border-radius: 8px;
-      margin-bottom: 10px;
-    }
-    .secret {
-      background-color: #ffeaa7;
-      border-left: 4px solid #e1b12c;
-      padding: 10px 15px;
-      border-radius: 8px;
-      font-weight: 600;
-    }
-    .announcement {
-      background-color: #dff9fb;
-      border-left: 4px solid #00a8ff;
-      padding: 10px 15px;
-      border-radius: 8px;
-    }
-    .chat-input {
-      display: flex;
-      margin-top: 15px;
-    }
-    .chat-input input {
-      flex: 1;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      outline: none;
-      font-size: 14px;
-    }
-    .chat-input button {
-      background-color: #273c75;
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      margin-left: 8px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    .chat-input button:hover {
-      background-color: #40739e;
-    }
-    footer {
-      text-align: center;
-      padding: 15px;
-      color: #7f8fa6;
-      font-size: 13px;
-    }
-    .logout-btn, .admin-btn {
-      display: block;
-      background-color: #c23616;
-      color: white;
-      border: none;
-      border-radius: 10px;
+    .btn {
+      font-family: "Poppins", sans-serif;
       padding: 10px 20px;
-      margin: 20px auto 10px;
+      border: none;
+      border-radius: 8px;
       cursor: pointer;
       font-size: 14px;
-      transition: 0.3s;
+      font-weight: 500;
+      transition: all 0.2s ease;
     }
-    .admin-btn {
-        background-color: #273c75;
-        margin-bottom: 20px;
+    .btn-primary {
+      background-color: var(--primary-color);
+      color: white;
     }
-    .logout-btn:hover {
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+    }
+    .btn-danger {
+      background-color: var(--danger-color);
+      color: white;
+    }
+    .btn-danger:hover {
       background-color: #e84118;
     }
-    .admin-btn:hover {
-        background-color: #40739e;
-    }
-    /* Blockchain Wall */
+    
+    /* Public Wall */
     #public-wall {
-      background: #ffffff;
+      background: var(--card-bg);
       border-radius: 15px;
-      padding: 25px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+      padding: 30px;
+      box-shadow: var(--shadow);
+    }
+    #public-wall h2 {
+      color: var(--primary-color);
+      font-size: 24px;
+      margin-top: 0;
+      margin-bottom: 20px;
+      border-bottom: 2px solid var(--border-color);
+      padding-bottom: 10px;
+    }
+
+    /* Wallet Area */
+    #wallet-info {
+      background-color: var(--bg-color);
+      padding: 15px 20px;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       margin-bottom: 25px;
     }
-    #postList .post-item {
-      border: 1px solid #ddd;
-      padding: 10px;
+    #wallet-info span {
+      font-size: 14px;
+      color: var(--text-light);
+    }
+    #wallet-info strong {
+      font-size: 16px;
+      color: var(--text-color);
+      font-weight: 600;
+      margin-left: 8px;
+    }
+
+    /* Post Composer */
+    #postComposer {
+      margin-bottom: 25px;
+    }
+    #postComposer textarea {
+      width: 100%;
+      height: 100px;
+      padding: 12px;
+      border: 1px solid var(--border-color);
       border-radius: 8px;
+      outline: none;
+      font-size: 15px;
+      font-family: "Poppins", sans-serif;
+      box-sizing: border-box; /* Important for padding */
+      resize: vertical;
+    }
+    #postComposer textarea:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 5px rgba(39, 60, 117, 0.2);
+    }
+    #composer-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+    }
+    #postingStatus {
+      font-size: 14px;
+      font-weight: 500;
+    }
+    #postingStatus.success { color: var(--success-color); }
+    #postingStatus.error { color: var(--danger-color); }
+
+    /* Post List */
+    #postList {
+      margin-top: 20px;
+      max-height: 600px;
+      overflow-y: auto;
+      padding-right: 10px; /* For scrollbar */
+    }
+    .post-item {
+      border: 1px solid var(--border-color);
+      padding: 18px;
+      border-radius: 12px;
+      margin-bottom: 15px;
+      background: #fdfdfd;
+      word-wrap: break-word;
+    }
+    .post-header {
+      font-size: 13px;
+      color: var(--text-light);
       margin-bottom: 10px;
-      background: #fff;
+    }
+    .post-header strong {
+      font-size: 15px;
+      color: var(--primary-hover);
+      font-weight: 600;
+    }
+    .post-content {
+      font-size: 15px;
+      line-height: 1.6;
+      white-space: pre-wrap; /* Preserves line breaks */
+    }
+    #no-posts {
+      text-align: center;
+      padding: 30px;
+      color: var(--text-light);
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-light);
+      font-size: 13px;
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
-  <header>🔒 Secure Organization Portal</header>
+
+  <header>
+    <span>🎓 University Portal</span>
+    <div class="header-controls">
+      <button class="btn btn-primary" onclick="window.location.href='admin.html'" style="background-color: #ffb300; color: #333;">
+        🔐 Admin Panel
+      </button>
+      <button class="btn btn-danger" onclick="logout()">
+        Logout
+      </button>
+    </div>
+  </header>
 
   <div class="container">
-    <div class="section">
-      <h2>Welcome to the Secure Intranet</h2>
-      <p>
-        This platform is for internal communication and data exchange between verified members of the organization.
-        All activities are encrypted and logged on-chain for transparency.
-      </p>
-    </div>
-
-    <button class="admin-btn" onclick="window.location.href='admin.html'">
-        Admin Management 🔐
-    </button>
-
-    <div class="section">
-      <h2>🔐 Confidential Communications</h2>
-      <div class="message-box">
-        <strong>Admin:</strong> Meeting scheduled at 10:00 AM tomorrow. Only project leads should attend.
-      </div>
-      <div class="message-box">
-        <strong>Security:</strong> New access policy will be rolled out next week. Please review your key permissions.
-      </div>
-      <div class="secret">
-        🔸 Secret Transmission: "Operation Eclipse" deployment key rotation planned for 18th Oct 2025.
-      </div>
-    </div>
-
-    <div class="section">
-      <h2>📢 Internal Announcements</h2>
-      <div class="announcement">
-        🎯 System maintenance on 15 Oct, 22:00 UTC — expect temporary downtime of decentralized nodes.
-      </div>
-      <div class="announcement">
-        💡 Remember to back up your personal encryption keys before next login cycle.
-      </div>
-    </div>
-
-    <div class="section">
-      <h2>💬 Send Secure Message</h2>
-      <div id="chatArea"></div>
-      <div class="chat-input">
-        <input id="msgInput" type="text" placeholder="Type your secure message..." />
-        <button onclick="sendMessage()">Send</button>
-      </div>
-    </div>
-
-    <!-- 🪙 PUBLIC BLOCKCHAIN WALL -->
     <div id="public-wall">
       <h2>🌐 University Public Wall</h2>
 
-      <div id="walletArea">
-        <button id="connectButton">Connect Wallet</button>
-        <span id="walletAddr" style="margin-left:10px;"></span>
+      <div id="wallet-info">
+        <span id="wallet-status">
+          Status: <strong>Disconnected</strong>
+        </span>
+        <button id="connectButton" class="btn btn-primary">Connect Wallet</button>
       </div>
 
-      <div id="postComposer" style="margin-top:12px; display:none;">
-        <textarea id="postInput" placeholder="Share what you have done..." style="width:100%;height:80px;padding:8px"></textarea>
-        <br/>
-        <button id="postButton">Post on Blockchain</button>
-        <span id="postingStatus" style="margin-left:10px"></span>
+      <div id="postComposer" style="display:none;">
+        <textarea id="postInput" placeholder="Share an update with the university..."></textarea>
+        <div id="composer-footer">
+          <span id="postingStatus"></span>
+          <button id="postButton" class="btn btn-primary">Post to Wall</button>
+        </div>
       </div>
 
-      <div id="postList" style="margin-top:16px;">
-        <!-- Posts load here -->
+      <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 30px 0;">
+
+      <div id="postList">
+        <p id="no-posts">Loading posts...</p>
       </div>
     </div>
-
-    <button class="logout-btn" onclick="logout()">Logout</button>
   </div>
 
-  <footer>© 2025 Confidential | Authorized Personnel Only</footer>
-
-  <!-- Ethers.js -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.0/dist/ethers.min.js"></script>
+  <footer>© 2025 Secure Portal | All posts are public on the blockchain.</footer>
 
   <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
   <script>
-    // Existing chat
-    function sendMessage() {
-      const msg = document.getElementById("msgInput").value.trim();
-      if (!msg) return;
-      const box = document.createElement("div");
-      box.className = "message-box";
-      box.innerHTML = `<strong>You:</strong> ${msg}`;
-      document.getElementById("chatArea").appendChild(box);
-      document.getElementById("msgInput").value = "";
-    }
-
     function logout() {
       alert("Logging out and returning to login page...");
       window.location.href = "index.html";
@@ -239,49 +251,59 @@
     let provider, signer, contract;
 
     const connectButton = document.getElementById("connectButton");
-    const walletAddrSpan = document.getElementById("walletAddr");
+    const walletStatus = document.getElementById("wallet-status");
     const postComposer = document.getElementById("postComposer");
     const postButton = document.getElementById("postButton");
     const postInput = document.getElementById("postInput");
     const postList = document.getElementById("postList");
     const postingStatus = document.getElementById("postingStatus");
+    const noPosts = document.getElementById("no-posts");
 
     async function init() {
       if (typeof window.ethereum === "undefined") {
         connectButton.innerText = "Install MetaMask";
         connectButton.onclick = () => window.open("https://metamask.io/");
+        walletStatus.innerHTML = "<strong>MetaMask Not Found</strong>";
         return;
       }
-      // Ethers v5 provider
+      
       provider = new ethers.providers.Web3Provider(window.ethereum);
       connectButton.onclick = connectWallet;
       
-      // Create a read-only contract instance to load posts
-      const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
-      await loadPosts(readOnlyContract);
+      try {
+        const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+        await loadPosts(readOnlyContract);
+      } catch (e) {
+        console.error("Error loading read-only contract", e);
+        if(noPosts) noPosts.textContent = "Error loading contract. Is the address correct?";
+      }
+
+      // Check if already connected
+      if (sessionStorage.getItem('isWalletConnected') === 'true') {
+        connectWallet();
+      }
     }
 
     async function connectWallet() {
       try {
-        // Ethers v5 request accounts
         await provider.send("eth_requestAccounts", []);
-        signer = provider.getSigner(); // Ethers v5 get signer
+        signer = provider.getSigner();
         
         const addr = await signer.getAddress();
-        walletAddrSpan.textContent = addr;
+        walletStatus.innerHTML = `Connected: <strong>${shortAddr(addr)}</strong>`;
         connectButton.style.display = "none";
         postComposer.style.display = "block";
+        sessionStorage.setItem('isWalletConnected', 'true');
         
-        // Create contract instance with signer for transactions
         contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
 
-        // Listen for new posts
         contract.on("PostCreated", (index, author, timestamp, text, event) => {
           prependPost({ author, text, timestamp: timestamp.toNumber() });
         });
       } catch (err) {
         console.error(err);
-        alert("MetaMask connection failed.");
+        walletStatus.innerHTML = "<strong>Connection Failed</strong>";
+        sessionStorage.removeItem('isWalletConnected');
       }
     }
 
@@ -292,57 +314,73 @@
       if (!message) return alert("Please enter something to post.");
       
       try {
-        postingStatus.textContent = "Posting...";
+        setPostingStatus("Posting to blockchain...", null);
         const tx = await contract.addPost(message);
         await tx.wait();
-        postingStatus.textContent = "Posted ✔";
+        setPostingStatus("Posted Successfully!", "success");
         postInput.value = "";
-        setTimeout(() => (postingStatus.textContent = ""), 2000);
+        setTimeout(() => setPostingStatus("", null), 3000);
       } catch (err) {
         console.error(err);
-        postingStatus.textContent = "Failed ❌";
-        setTimeout(() => (postingStatus.textContent = ""), 2000);
+        setPostingStatus("Transaction Failed", "error");
+        setTimeout(() => setPostingStatus("", null), 3000);
       }
     });
 
     async function loadPosts(contractInstance) {
-      postList.innerHTML = "<p>Loading posts...</p>";
+      if(noPosts) noPosts.textContent = "Loading posts from the blockchain...";
       try {
         const countBigNum = await contractInstance.getPostCount();
-        const count = countBigNum.toNumber(); // Ethers v5 uses BigNumber
+        const count = countBigNum.toNumber();
         
-        postList.innerHTML = "";
+        if (count === 0) {
+          if(noPosts) noPosts.textContent = "No posts yet. Be the first!";
+          return;
+        }
+
+        if(noPosts) postList.innerHTML = ""; // Clear "Loading"
+        
         for (let i = count - 1; i >= 0; i--) {
           const [author, text, ts] = await contractInstance.getPost(i);
-          appendPostToUI({ author, text, timestamp: ts.toNumber() }); // Ethers v5 uses BigNumber
+          appendPostToUI({ author, text, timestamp: ts.toNumber() });
         }
-        if (count === 0) postList.innerHTML = "<p>No posts yet. Be the first!</p>";
       } catch (err) {
         console.error(err);
-        postList.innerHTML = "<p>Unable to load posts. Is the contract address correct and deployed to Ganache?</p>";
+        if(noPosts) noPosts.textContent = "Error: Could not load posts. Is the contract address correct and deployed?";
       }
     }
 
     function appendPostToUI({ author, text, timestamp }) {
+      if(noPosts && noPosts.parentElement === postList) postList.innerHTML = ""; // Clear "No posts" message
+      
       const d = new Date(timestamp * 1000);
       const el = document.createElement("div");
       el.className = "post-item";
-      el.innerHTML = `<div style="font-size:0.9em;color:#444;margin-bottom:6px;">
-        <strong>${shortAddr(author)}</strong> • ${d.toLocaleString()}
+      el.innerHTML = `
+        <div class="post-header">
+          <strong>${shortAddr(author)}</strong> • ${d.toLocaleString()}
         </div>
-        <div style="white-space:pre-wrap;">${escapeHtml(text)}</div>`;
+        <div class="post-content">${escapeHtml(text)}</div>`;
       postList.appendChild(el);
     }
 
     function prependPost({ author, text, timestamp }) {
+      if(noPosts && noPosts.parentElement === postList) postList.innerHTML = ""; // Clear "No posts" message
+
       const d = new Date(timestamp * 1000);
       const el = document.createElement("div");
       el.className = "post-item";
-      el.innerHTML = `<div style="font-size:0.9em;color:#444;margin-bottom:6px;">
-        <strong>${shortAddr(author)}</strong> • ${d.toLocaleString()}
+      el.innerHTML = `
+        <div class="post-header">
+          <strong>${shortAddr(author)}</strong> • ${d.toLocaleString()}
         </div>
-        <div style="white-space:pre-wrap;">${escapeHtml(text)}</div>`;
+        <div class="post-content">${escapeHtml(text)}</div>`;
       postList.prepend(el);
+    }
+
+    function setPostingStatus(message, type) {
+      postingStatus.textContent = message;
+      postingStatus.className = type; // 'success' or 'error'
     }
 
     function escapeHtml(unsafe) {
@@ -360,7 +398,5 @@
 
     window.addEventListener("DOMContentLoaded", init);
   </script>
-</body>
-</html>
 </body>
 </html>
