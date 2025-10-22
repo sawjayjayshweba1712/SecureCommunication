@@ -8,46 +8,91 @@
   <style>
     body { font-family:Arial,sans-serif;background:#f2f6fb;padding:40px; }
     .wrap { max-width:800px;margin:auto;background:#fff;padding:28px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.06); }
-    h1 { margin-bottom:8px; }
-    button { padding:10px 14px;border-radius:8px;border:0;background:#1e88e5;color:#fff;cursor:pointer; }
-    .field { background:#f8fafc;padding:12px;border-radius:8px; }
+    h1 { margin-bottom:8px; color: #273c75; }
+    button { padding:10px 14px;border-radius:8px;border:0;background:#1e88e5;color:#fff;cursor:pointer; font-size: 14px; margin-right: 10px;}
+    button:hover { background: #1565c0; }
+    .field { background:#f8fafc;padding:12px 15px; border-radius:8px; margin-bottom: 12px; border-left: 4px solid #40739e; }
+    .field b { color: #273c75; }
+    #addr { font-family: monospace; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>Secure Dashboard</h1>
-    <p>This dashboard reads on-chain account info and profile pointer.</p>
-    <div class="field"><b>Wallet:</b> <span id="addr"></span></div>
-    <div class="field"><b>Balance:</b> <span id="balance"></span></div>
-    <div class="field"><b>Registered:</b> <span id="registered"></span></div>
-    <div class="field"><b>Role:</b> <span id="role"></span></div>
-    <div class="field"><b>Profile CID:</b> <span id="profileCid"></span></div>
-    <div style="margin-top:15px;">
-      <button onclick="goBack()">Back</button>
-      <button onclick="goNext()">Next</button>
+    <p>Your on-chain account information:</p>
+    <div class="field"><b>Wallet Address:</b> <span id="addr">Loading...</span></div>
+    <div class="field"><b>ETH Balance:</b> <span id="balance">Loading...</span></div>
+    <div class="field"><b>Registration Status:</b> <span id="registered">Loading...</span></div>
+    <div class="field"><b>Assigned Role:</b> <span id="role">Loading...</span></div>
+    <div class="field"><b>Profile Pointer/CID:</b> <span id="profileCid">Loading...</span></div>
+    <div style="margin-top:25px;">
+      <button onclick="goBack()">← Back to Login</button>
+      <button onclick="goNext()" style="background-color: #43a047;">Go to Public Wall →</button>
     </div>
   </div>
 
   <script>
-    const contractAddress="0xB8e7594f21d3093ce18B274ddF1288E87273c3d3";
+    // ⚠️ PASTE YOUR *NEW* AuthManager CONTRACT ADDRESS HERE
+    const contractAddress="0xbeD37d9132FB40Ff93Ba0F2F9840C6ceBa8C7EB1";
+    
+    // ABI remains the same for view functions used here
     const contractABI=[
       "function isRegistered(address user) view returns (bool)",
       "function getRole(address user) view returns (string memory)",
       "function getProfileCID(address user) view returns (string memory)"
     ];
+    
     async function load(){
+      if (typeof window.ethereum === "undefined") {
+         alert("MetaMask is not installed!");
+         return;
+      }
+      
       const provider=new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts",[]);
-      const signer=provider.getSigner();const addr=await signer.getAddress();
-      document.getElementById('addr').textContent=addr;
-      const bal=await provider.getBalance(addr);
-      document.getElementById('balance').textContent=ethers.utils.formatEther(bal)+" ETH";
-      const c=new ethers.Contract(contractAddress,contractABI,provider);
-      try{const r=await c.isRegistered(addr);document.getElementById('registered').textContent=r?'Yes':'No';const role=await c.getRole(addr);document.getElementById('role').textContent=role||'N/A';const cid=await c.getProfileCID(addr);document.getElementById('profileCid').textContent=cid||'N/A';}catch(e){console.log(e);}
+      
+      try {
+        await provider.send("eth_requestAccounts",[]); // Ensure wallet is connected
+        const signer=provider.getSigner();
+        const addr=await signer.getAddress();
+        document.getElementById('addr').textContent=addr;
+        
+        const bal=await provider.getBalance(addr);
+        // Format balance more nicely
+        document.getElementById('balance').textContent=ethers.utils.formatEther(bal).substring(0, 8) + " ETH"; 
+        
+        const c=new ethers.Contract(contractAddress,contractABI,provider); // Use provider for reads
+        
+        const r=await c.isRegistered(addr);
+        document.getElementById('registered').textContent=r ? '✅ Registered' : '❌ Not Registered';
+        
+        const role=await c.getRole(addr);
+        document.getElementById('role').textContent=role || 'N/A';
+        
+        const cid=await c.getProfileCID(addr);
+        document.getElementById('profileCid').textContent=cid || 'N/A';
+        
+      } catch(e) {
+          console.error("Error loading dashboard data:", e);
+          // Display error to user
+          document.getElementById('addr').textContent = "Error loading data";
+          document.getElementById('balance').textContent = "Error";
+          document.getElementById('registered').textContent = "Error";
+          document.getElementById('role').textContent = "Error";
+          document.getElementById('profileCid').textContent = "Error";
+          alert("Could not load dashboard data. Please ensure your wallet is connected to the correct network and the contract address is correct.");
+      }
     }
+    
     function goBack(){window.location.href="index.html";}
     function goNext(){window.location.href="secure.html";}
+    
     window.onload=load;
+
+    // Add event listeners for MetaMask account/network changes
+    if (typeof window.ethereum !== 'undefined') {
+        window.ethereum.on('accountsChanged', () => window.location.reload());
+        window.ethereum.on('chainChanged', () => window.location.reload());
+    }
   </script>
 </body>
 </html>

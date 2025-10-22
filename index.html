@@ -56,13 +56,18 @@
   </div>
 
   <script>
-    const CONTRACT_ADDRESS = "0xB8e7594f21d3093ce18B274ddF1288E87273c3d3";
+    // ⚠️ PASTE YOUR *NEW* AuthManager CONTRACT ADDRESS HERE
+    const CONTRACT_ADDRESS = "0xbeD37d9132FB40Ff93Ba0F2F9840C6ceBa8C7EB1";
+    
+    // MODIFIED: Added logAccess and UserAccess event
     const CONTRACT_ABI = [
       "function register() public",
       "function deactivateAccount() public",
       "function authenticate(address user) external view returns (bool)",
       "function setProfileCID(string calldata cid) external",
-      "function isRegistered(address user) external view returns (bool)"
+      "function isRegistered(address user) external view returns (bool)",
+      "function logAccess() external", // NEW function
+      "event UserAccess(address indexed user, uint256 timestamp)" // NEW event
     ];
 
     let provider, signer, contract, currentAccount;
@@ -79,11 +84,61 @@
       const n=await provider.getNetwork();el('currentAccount').textContent=currentAccount;el('networkName').textContent=n.name;showStatus('Connected',true);
       el('connectButton').style.display='none';el('disconnectButton').style.display='inline-block';
     }
+    
     function disconnect(){provider=null;signer=null;contract=null;currentAccount=null;el('currentAccount').textContent='N/A';el('networkName').textContent='N/A';showStatus('Disconnected',false);el('connectButton').style.display='inline-block';el('disconnectButton').style.display='none';}
-    async function registerUser(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try{const tx=await contract.register();showMsg('registerMessage','Confirm in MetaMask');await tx.wait();showMsg('registerMessage','Registered successfully');}catch(e){showMsg('registerMessage',e.message,false);}}
-    async function authenticateUser(){if(!contract){showMsg('authMessage','Connect wallet first',false);return;}const ok=await contract.authenticate(currentAccount);if(ok){showMsg('authMessage','Authenticated! Redirecting...');setTimeout(()=>window.location.href='dashboard.html',1000);}else{showMsg('authMessage','Not registered',false);}}
-    async function deactivateAccount(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}const tx=await contract.deactivateAccount();await tx.wait();showMsg('registerMessage','Account deactivated');}
-    async function setProfileCid(){if(!contract){showMsg('profileMessage','Connect wallet first',false);return;}const cid=el('profileCid').value.trim();if(!cid){showMsg('profileMessage','Enter CID',false);return;}const tx=await contract.setProfileCID(cid);await tx.wait();showMsg('profileMessage','Profile CID saved');}
+    
+    async function registerUser(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try{const tx=await contract.register();showMsg('registerMessage','Confirm registration in MetaMask...');await tx.wait();showMsg('registerMessage','Registered successfully!');}catch(e){showMsg('registerMessage', e.error?.message || e.message || 'Registration failed.',false);}}
+    
+    // MODIFIED: Calls logAccess after successful authentication check
+    async function authenticateUser(){
+      if(!contract){showMsg('authMessage','Connect wallet first',false);return;}
+      
+      try {
+        // 1. Check if registered (view call, free)
+        const isAuth = await contract.authenticate(currentAccount);
+        
+        if(isAuth){
+          // 2. If registered, send the logAccess transaction (costs gas)
+          showMsg('authMessage','Authenticated! Logging your access...', true);
+          const tx = await contract.logAccess(); // Call the logging function
+          await tx.wait(); // Wait for the logging transaction to be mined
+          
+          // 3. Redirect
+          showMsg('authMessage','Access logged! Redirecting to dashboard...', true);
+          setTimeout(()=>window.location.href='dashboard.html', 1500); // Redirect after logging
+        
+        } else {
+          // User is not registered
+          showMsg('authMessage','Authentication Failed: User not registered.',false);
+        }
+      } catch (e) {
+          // Handle errors from authenticate check OR logAccess transaction
+          console.error("Authentication or Logging Error:", e);
+          showMsg('authMessage', e.error?.message || e.message || 'Authentication or logging failed.', false);
+      }
+    }
+    
+    async function deactivateAccount(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try { const tx=await contract.deactivateAccount(); showMsg('registerMessage', 'Confirm deactivation in MetaMask...'); await tx.wait(); showMsg('registerMessage','Account deactivated successfully.');} catch(e) { showMsg('registerMessage', e.error?.message || e.message || 'Deactivation failed.', false); }}
+    
+    async function setProfileCid(){if(!contract){showMsg('profileMessage','Connect wallet first',false);return;}const cid=el('profileCid').value.trim();if(!cid){showMsg('profileMessage','Please enter a Profile CID or pointer.',false);return;}try{const tx=await contract.setProfileCID(cid); showMsg('profileMessage', 'Confirm saving profile CID in MetaMask...'); await tx.wait();showMsg('profileMessage','Profile CID saved successfully!');} catch(e) {showMsg('profileMessage', e.error?.message || e.message || 'Failed to save Profile CID.',false);}}
+
+    // Add event listeners for MetaMask account/network changes
+    if (typeof window.ethereum !== 'undefined') {
+        window.ethereum.on('accountsChanged', (accounts) => {
+            // If account changed, disconnect and require re-connect
+            if (accounts.length === 0) {
+              disconnect();
+            } else {
+              // Reload page or re-run connectWallet to update UI
+              window.location.reload(); 
+            }
+        });
+        window.ethereum.on('chainChanged', (chainId) => {
+            // Reload page on network change
+            window.location.reload();
+        });
+    }
+
   </script>
 </body>
 </html>

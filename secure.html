@@ -16,6 +16,7 @@
       --border-color: #dfe4ea;
       --success-color: #43a047;
       --danger-color: #c23616;
+      --danger-hover: #e84118;
       --shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
     }
     body {
@@ -67,7 +68,7 @@
       color: white;
     }
     .btn-danger:hover {
-      background-color: #e84118;
+      background-color: var(--danger-hover);
     }
     
     /* Public Wall */
@@ -154,6 +155,7 @@
       margin-bottom: 15px;
       background: #fdfdfd;
       word-wrap: break-word;
+      position: relative; /* Needed for absolute positioning of delete button */
     }
     .post-header {
       font-size: 13px;
@@ -169,6 +171,15 @@
       font-size: 15px;
       line-height: 1.6;
       white-space: pre-wrap; /* Preserves line breaks */
+      padding-right: 60px; /* Space for delete button */
+    }
+     /* NEW: Delete Button Style */
+    .delete-btn {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      padding: 5px 10px;
+      font-size: 12px;
     }
     #no-posts {
       text-align: center;
@@ -226,29 +237,34 @@
     </div>
   </div>
 
-  <footer>© 2025 Secure Portal | All posts are public on the blockchain.</footer>
+  <footer>© 2025 Secure Portal | Posts are stored on the blockchain.</footer>
 
   <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
   <script>
     function logout() {
+      // Clear connection status on logout
+      sessionStorage.removeItem('isWalletConnected'); 
       alert("Logging out and returning to login page...");
       window.location.href = "index.html";
     }
 
-    // -------------------- BLOCKCHAIN WALL (Ethers v5) --------------------
+    // --- BLOCKCHAIN WALL (Ethers v5 with Delete Functionality) ---
     
-    // ⚠️ 1. PASTE YOUR NEW PublicWall CONTRACT ADDRESS HERE
-    const CONTRACT_ADDRESS = "0x338Fb37d61751Ae464356DDE02bBF292f1eBC91A"; 
+    // ⚠️ PASTE YOUR *NEW RE-DEPLOYED* PublicWall CONTRACT ADDRESS HERE
+    const CONTRACT_ADDRESS = "0x59f9A74a496b9c845d20e88aD33a6fc8d49dC30d"; 
 
+    // MODIFIED: Updated ABI with deletePost and modified getPost
     const ABI = [
       "function addPost(string calldata _text) external",
+      "function deletePost(uint256 index) external", // Allows deleting posts
       "function getPostCount() view returns (uint256)",
-      "function getPost(uint256 index) view returns (address author, string memory text, uint256 timestamp)",
-      "event PostCreated(uint256 indexed index, address indexed author, uint256 timestamp, string text)"
+      "function getPost(uint256 index) view returns (address author, string memory text, uint256 timestamp, bool isDeleted)", // Returns deletion status
+      "event PostCreated(uint256 indexed index, address indexed author, uint256 timestamp, string text)",
+      "event PostDeleted(uint256 indexed index, address indexed author)" // Event for deletion
     ];
 
-    let provider, signer, contract;
+    let provider, signer, contract, currentAccount; // currentAccount needed for delete check
 
     const connectButton = document.getElementById("connectButton");
     const walletStatus = document.getElementById("wallet-status");
@@ -264,6 +280,7 @@
         connectButton.innerText = "Install MetaMask";
         connectButton.onclick = () => window.open("https://metamask.io/");
         walletStatus.innerHTML = "<strong>MetaMask Not Found</strong>";
+        noPosts.textContent = "Please install MetaMask to use the Public Wall.";
         return;
       }
       
@@ -271,6 +288,7 @@
       connectButton.onclick = connectWallet;
       
       try {
+        // Load posts initially with read-only provider
         const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
         await loadPosts(readOnlyContract);
       } catch (e) {
@@ -278,7 +296,7 @@
         if(noPosts) noPosts.textContent = "Error loading contract. Is the address correct?";
       }
 
-      // Check if already connected
+      // Reconnect if session indicates connection
       if (sessionStorage.getItem('isWalletConnected') === 'true') {
         connectWallet();
       }
@@ -289,27 +307,31 @@
         await provider.send("eth_requestAccounts", []);
         signer = provider.getSigner();
         
-        const addr = await signer.getAddress();
-        walletStatus.innerHTML = `Connected: <strong>${shortAddr(addr)}</strong>`;
+        currentAccount = await signer.getAddress(); // Store connected account
+        walletStatus.innerHTML = `Connected: <strong>${shortAddr(currentAccount)}</strong>`;
         connectButton.style.display = "none";
         postComposer.style.display = "block";
         sessionStorage.setItem('isWalletConnected', 'true');
         
         contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
 
-        contract.on("PostCreated", (index, author, timestamp, text, event) => {
-          prependPost({ author, text, timestamp: timestamp.toNumber() });
-        });
+        // Listen for events and RELOAD the list for simplicity
+        contract.on("PostCreated", () => loadPosts(contract));
+        contract.on("PostDeleted", () => loadPosts(contract));
+
+        // Refresh posts on connect to potentially show delete buttons
+        await loadPosts(contract); 
+
       } catch (err) {
-        console.error(err);
+        console.error("Connection error:", err);
         walletStatus.innerHTML = "<strong>Connection Failed</strong>";
         sessionStorage.removeItem('isWalletConnected');
+        currentAccount = null; // Clear account on failure
       }
     }
 
     postButton.addEventListener("click", async () => {
       if (!contract) return alert("Please connect your wallet first.");
-      
       const message = postInput.value.trim();
       if (!message) return alert("Please enter something to post.");
       
@@ -318,72 +340,118 @@
         const tx = await contract.addPost(message);
         await tx.wait();
         setPostingStatus("Posted Successfully!", "success");
-        postInput.value = "";
+        postInput.value = ""; // Clear input
         setTimeout(() => setPostingStatus("", null), 3000);
+        // Event listener will handle UI update by calling loadPosts
       } catch (err) {
-        console.error(err);
-        setPostingStatus("Transaction Failed", "error");
-        setTimeout(() => setPostingStatus("", null), 3000);
+        console.error("Post error:", err);
+        setPostingStatus(`Transaction Failed: ${err.reason || err.message}`, "error");
+        setTimeout(() => setPostingStatus("", null), 5000); // Show error longer
       }
     });
 
     async function loadPosts(contractInstance) {
-      if(noPosts) noPosts.textContent = "Loading posts from the blockchain...";
+       if(!contractInstance) return; // Guard against errors during init
+       if(noPosts) noPosts.textContent = "Loading posts from the blockchain...";
+       postList.innerHTML = ""; // Clear previous posts immediately
+       postList.appendChild(noPosts); // Add loading message back
+      
       try {
         const countBigNum = await contractInstance.getPostCount();
         const count = countBigNum.toNumber();
         
-        if (count === 0) {
+        let visiblePostCount = 0;
+        const postsToRender = []; // Collect posts before rendering
+
+        for (let i = count - 1; i >= 0; i--) {
+          const [author, text, ts, isDeleted] = await contractInstance.getPost(i);
+          if (!isDeleted) {
+              postsToRender.push({ 
+                  index: i, 
+                  author, 
+                  text, 
+                  timestamp: ts.toNumber() 
+              });
+              visiblePostCount++;
+          }
+        }
+        
+        // Clear loading message only if we have posts or no posts
+        postList.innerHTML = ""; 
+
+        if (visiblePostCount === 0) {
           if(noPosts) noPosts.textContent = "No posts yet. Be the first!";
-          return;
+          postList.appendChild(noPosts);
+        } else {
+            // Render collected posts
+            postsToRender.forEach(post => appendPostToUI(post));
         }
 
-        if(noPosts) postList.innerHTML = ""; // Clear "Loading"
-        
-        for (let i = count - 1; i >= 0; i--) {
-          const [author, text, ts] = await contractInstance.getPost(i);
-          appendPostToUI({ author, text, timestamp: ts.toNumber() });
-        }
       } catch (err) {
-        console.error(err);
+        console.error("Load posts error:", err);
         if(noPosts) noPosts.textContent = "Error: Could not load posts. Is the contract address correct and deployed?";
+        postList.innerHTML = ""; // Clear list
+        postList.appendChild(noPosts); // Show error
       }
     }
 
-    function appendPostToUI({ author, text, timestamp }) {
-      if(noPosts && noPosts.parentElement === postList) postList.innerHTML = ""; // Clear "No posts" message
-      
+    function appendPostToUI({ index, author, text, timestamp }) {
       const d = new Date(timestamp * 1000);
       const el = document.createElement("div");
       el.className = "post-item";
+      el.id = `post-${index}`; // ID for potential removal/update
+
+      let deleteButtonHtml = '';
+      // Show delete button ONLY if connected account matches author
+      if (currentAccount && author.toLowerCase() === currentAccount.toLowerCase()) {
+        deleteButtonHtml = `<button class="btn btn-danger delete-btn" onclick="handleDelete(${index})">Delete</button>`;
+      }
+
       el.innerHTML = `
+        ${deleteButtonHtml} 
         <div class="post-header">
           <strong>${shortAddr(author)}</strong> • ${d.toLocaleString()}
         </div>
         <div class="post-content">${escapeHtml(text)}</div>`;
       postList.appendChild(el);
     }
+    
+    // Function called by the delete button
+    async function handleDelete(index) {
+      if (!contract) return alert("Please connect your wallet first.");
+      if (!confirm("Are you sure you want to delete this post? This action cannot be undone on the blockchain.")) return;
 
-    function prependPost({ author, text, timestamp }) {
-      if(noPosts && noPosts.parentElement === postList) postList.innerHTML = ""; // Clear "No posts" message
+      try {
+        setPostingStatus("Deleting post...", null);
+        const tx = await contract.deletePost(index);
+        await tx.wait();
+        setPostingStatus("Post deleted!", "success");
+        
+        // Remove from UI immediately for responsiveness (event listener will also reload)
+        const postElement = document.getElementById(`post-${index}`);
+        if (postElement) postElement.remove();
+        
+        // Check if list is now empty
+        if (postList.children.length === 0) {
+             if(noPosts) noPosts.textContent = "No posts yet. Be the first!";
+             postList.appendChild(noPosts);
+        }
 
-      const d = new Date(timestamp * 1000);
-      const el = document.createElement("div");
-      el.className = "post-item";
-      el.innerHTML = `
-        <div class="post-header">
-          <strong>${shortAddr(author)}</strong> • ${d.toLocaleString()}
-        </div>
-        <div class="post-content">${escapeHtml(text)}</div>`;
-      postList.prepend(el);
+        setTimeout(() => setPostingStatus("", null), 3000);
+      } catch (err) {
+        console.error("Delete error:", err);
+        setPostingStatus(`Delete Failed: ${err.reason || err.message}`, "error");
+        setTimeout(() => setPostingStatus("", null), 5000);
+      }
     }
 
-    function setPostingStatus(message, type) {
+    function setPostingStatus(message, type) { // type can be 'success' or 'error' or null
       postingStatus.textContent = message;
-      postingStatus.className = type; // 'success' or 'error'
+      postingStatus.className = type || ''; 
     }
 
     function escapeHtml(unsafe) {
+      if (typeof unsafe !== 'string') return '';
       return unsafe
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
@@ -393,10 +461,26 @@
     }
 
     function shortAddr(a) {
-      return a ? a.slice(0, 6) + "..." + a.slice(-4) : "";
+      return a ? `${a.slice(0, 6)}...${a.slice(-4)}` : "";
     }
 
     window.addEventListener("DOMContentLoaded", init);
+
+    // Add event listeners for MetaMask account/network changes
+     if (typeof window.ethereum !== 'undefined') {
+        window.ethereum.on('accountsChanged', (accounts) => {
+            // If account changed, reload the page to reflect correct delete buttons etc.
+             window.location.reload(); 
+             // Clear connection status if disconnected
+             if(accounts.length === 0) {
+                 sessionStorage.removeItem('isWalletConnected');
+             }
+        });
+        window.ethereum.on('chainChanged', () => {
+            // Reload page on network change
+            window.location.reload();
+        });
+    }
   </script>
 </body>
 </html>
