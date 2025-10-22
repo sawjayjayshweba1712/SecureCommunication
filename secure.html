@@ -89,7 +89,7 @@
       color: #7f8fa6;
       font-size: 13px;
     }
-    .logout-btn, .admin-btn { /* Style both for uniformity */
+    .logout-btn, .admin-btn {
       display: block;
       background-color: #c23616;
       color: white;
@@ -102,7 +102,7 @@
       transition: 0.3s;
     }
     .admin-btn {
-        background-color: #273c75; /* Differentiate admin button */
+        background-color: #273c75;
         margin-bottom: 20px;
     }
     .logout-btn:hover {
@@ -110,6 +110,21 @@
     }
     .admin-btn:hover {
         background-color: #40739e;
+    }
+    /* Blockchain Wall */
+    #public-wall {
+      background: #ffffff;
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+      margin-bottom: 25px;
+    }
+    #postList .post-item {
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      background: #fff;
     }
   </style>
 </head>
@@ -128,6 +143,7 @@
     <button class="admin-btn" onclick="window.location.href='admin.html'">
         Admin Management 🔐
     </button>
+
     <div class="section">
       <h2>🔐 Confidential Communications</h2>
       <div class="message-box">
@@ -160,12 +176,37 @@
       </div>
     </div>
 
+    <!-- 🪙 PUBLIC BLOCKCHAIN WALL -->
+    <div id="public-wall">
+      <h2>🌐 University Public Wall</h2>
+
+      <div id="walletArea">
+        <button id="connectButton">Connect Wallet</button>
+        <span id="walletAddr" style="margin-left:10px;"></span>
+      </div>
+
+      <div id="postComposer" style="margin-top:12px; display:none;">
+        <textarea id="postInput" placeholder="Share what you have done..." style="width:100%;height:80px;padding:8px"></textarea>
+        <br/>
+        <button id="postButton">Post on Blockchain</button>
+        <span id="postingStatus" style="margin-left:10px"></span>
+      </div>
+
+      <div id="postList" style="margin-top:16px;">
+        <!-- Posts load here -->
+      </div>
+    </div>
+
     <button class="logout-btn" onclick="logout()">Logout</button>
   </div>
 
   <footer>© 2025 Confidential | Authorized Personnel Only</footer>
 
+  <!-- Ethers.js -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.0/dist/ethers.min.js"></script>
+
   <script>
+    // Existing chat
     function sendMessage() {
       const msg = document.getElementById("msgInput").value.trim();
       if (!msg) return;
@@ -180,6 +221,128 @@
       alert("Logging out and returning to login page...");
       window.location.href = "index.html";
     }
+
+    // -------------------- BLOCKCHAIN WALL --------------------
+    const CONTRACT_ADDRESS = "0xB8e7594f21d3093ce18B274ddF1288E87273c3d3"; // Replace with your deployed contract address
+
+    const ABI = [
+      "function addPost(string _text) external",
+      "function getPostCount() view returns (uint256)",
+      "function getPost(uint256 index) view returns (address author, string text, uint256 timestamp)",
+      "event PostCreated(uint256 indexed index, address indexed author, uint256 timestamp, string text)"
+    ];
+
+    let provider, signer, contract;
+
+    const connectButton = document.getElementById("connectButton");
+    const walletAddrSpan = document.getElementById("walletAddr");
+    const postComposer = document.getElementById("postComposer");
+    const postButton = document.getElementById("postButton");
+    const postInput = document.getElementById("postInput");
+    const postList = document.getElementById("postList");
+    const postingStatus = document.getElementById("postingStatus");
+
+    async function init() {
+      if (typeof window.ethereum === "undefined") {
+        connectButton.innerText = "Install MetaMask";
+        connectButton.onclick = () => window.open("https://metamask.io/");
+        return;
+      }
+      provider = new ethers.BrowserProvider(window.ethereum);
+      connectButton.onclick = connectWallet;
+      contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+      await loadPosts();
+    }
+
+    async function connectWallet() {
+      try {
+        await provider.send("eth_requestAccounts", []);
+        signer = await provider.getSigner();
+        const addr = await signer.getAddress();
+        walletAddrSpan.textContent = addr;
+        connectButton.style.display = "none";
+        postComposer.style.display = "block";
+        contract = contract.connect(signer);
+
+        const eventFilter = contract.filters.PostCreated();
+        contract.on(eventFilter, (index, author, timestamp, text) => {
+          prependPost({ author, text, timestamp: Number(timestamp) });
+        });
+      } catch (err) {
+        console.error(err);
+        alert("MetaMask connection failed.");
+      }
+    }
+
+    postButton.addEventListener("click", async () => {
+      const message = postInput.value.trim();
+      if (!message) return alert("Please enter something to post.");
+      try {
+        postingStatus.textContent = "Posting...";
+        const tx = await contract.addPost(message);
+        await tx.wait();
+        postingStatus.textContent = "Posted ✔";
+        postInput.value = "";
+        setTimeout(() => (postingStatus.textContent = ""), 2000);
+      } catch (err) {
+        console.error(err);
+        postingStatus.textContent = "Failed ❌";
+        setTimeout(() => (postingStatus.textContent = ""), 2000);
+      }
+    });
+
+    async function loadPosts() {
+      postList.innerHTML = "<p>Loading posts...</p>";
+      try {
+        const count = Number(await contract.getPostCount());
+        postList.innerHTML = "";
+        for (let i = count - 1; i >= 0; i--) {
+          const [author, text, ts] = await contract.getPost(i);
+          appendPostToUI({ author, text, timestamp: Number(ts) });
+        }
+        if (count === 0) postList.innerHTML = "<p>No posts yet. Be the first!</p>";
+      } catch (err) {
+        console.error(err);
+        postList.innerHTML = "<p>Unable to load posts. Is Ganache running?</p>";
+      }
+    }
+
+    function appendPostToUI({ author, text, timestamp }) {
+      const d = new Date(timestamp * 1000);
+      const el = document.createElement("div");
+      el.className = "post-item";
+      el.innerHTML = `<div style="font-size:0.9em;color:#444;margin-bottom:6px;">
+        <strong>${shortAddr(author)}</strong> • ${d.toLocaleString()}
+        </div>
+        <div style="white-space:pre-wrap;">${escapeHtml(text)}</div>`;
+      postList.appendChild(el);
+    }
+
+    function prependPost({ author, text, timestamp }) {
+      const d = new Date(timestamp * 1000);
+      const el = document.createElement("div");
+      el.className = "post-item";
+      el.innerHTML = `<div style="font-size:0.9em;color:#444;margin-bottom:6px;">
+        <strong>${shortAddr(author)}</strong> • ${d.toLocaleString()}
+        </div>
+        <div style="white-space:pre-wrap;">${escapeHtml(text)}</div>`;
+      postList.prepend(el);
+    }
+
+    function escapeHtml(unsafe) {
+      return unsafe
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function shortAddr(a) {
+      return a ? a.slice(0, 6) + "..." + a.slice(-4) : "";
+    }
+
+    window.addEventListener("DOMContentLoaded", init);
   </script>
 </body>
 </html>
