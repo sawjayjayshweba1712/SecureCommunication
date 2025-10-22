@@ -13,6 +13,7 @@ contract AuthManager {
     event UserRemoved(address indexed user);
     event RoleSet(address indexed user, string role);
     event ProfileUpdated(address indexed user, string cid);
+    event UserAccess(address indexed user, uint256 timestamp); // NEW: Event for logging
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner");
@@ -42,11 +43,18 @@ contract AuthManager {
     }
 
     function authenticate(address user) external view returns (bool) {
+        // Checks if a user is registered (still free to call)
         return registered[user];
     }
 
     function isRegistered(address user) external view returns (bool) {
         return registered[user];
+    }
+
+    // NEW: Function to log access (requires a transaction)
+    function logAccess() external {
+        require(registered[msg.sender], "Must be registered to log access");
+        emit UserAccess(msg.sender, block.timestamp);
     }
 
     function setRole(address user, string calldata role) external onlyOwner {
@@ -68,7 +76,6 @@ contract AuthManager {
         return profileCID[user];
     }
 
-    // Allow owner to transfer ownership if needed
     function transferOwnership(address newOwner) external onlyOwner {
         require(newOwner != address(0), "Zero address");
         owner = newOwner;
