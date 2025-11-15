@@ -8,13 +8,16 @@
   <!-- Chart.js for graphing login attempts -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
   <style>
-    body { font-family: 'Arial', sans-serif; padding: 20px; background:#e0f7fa; color:#222; }
+    body { 
+        font-family: 'Arial', sans-serif; 
+        padding: 20px; 
+        background:#e0f7fa; 
+        color:#222; 
+        padding-top: 80px; /* Space for the fixed header */
+    }
     .card { background:#fff; padding:30px; border-radius:15px; box-shadow:0 8px 25px rgba(0,0,0,0.1); height: 100%; }
-    h1 { text-align:center; color:#006064; margin-bottom: 25px; }
     h2 { color:#00838f; border-bottom:2px solid #e0f7fa; padding-bottom:5px; margin-top:20px; font-weight: 700; }
-    .status { padding:12px; border-radius:8px; margin-bottom:15px; text-align:center; font-weight: bold; }
-    .ok { background:#e8f5e9; color:#1b5e20; border:1px solid #c8e6c9; }
-    .err { background:#ffebee; color:#b71c1c; border:1px solid #ffcdd2; }
+    
     .message { padding:8px 12px; margin-top:10px; border-radius:6px; font-size:14px; }
     input[type="text"], select { padding:10px; border-radius:6px; border:1px solid #ccc; width:calc(100% - 130px); margin-right:10px; box-sizing: border-box; }
     button { padding:10px 15px; border:0; border-radius:6px; cursor:pointer; font-weight:600; transition: background-color 0.2s ease; }
@@ -26,7 +29,6 @@
     #assignRoleBtn { background:#43a047; color:#fff; }
     #checkRoleBtn { background:#00bcd4; color:#fff; }
     #dashboardBackBtn { background:#78909c; color:#fff; margin-top:30px; }
-    #ownerInfo { padding:15px; background:#fffde7; border: 1px solid #fff9c4; border-left: 5px solid #fdd835; border-radius:8px; margin-bottom:20px; font-size:14px; }
     
     /* Dashboard Specific Styles */
     .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
@@ -41,14 +43,73 @@
     .log-registered { background: #e8f5e9; color: #2e7d32; }
     .log-did { background: #fff3e0; color: #e65100; }
     .log-user-removed { background: #ffebee; color: #d32f2f; }
+    
+    /* NEW CSS for Fixed Header and Status */
+    .fixed-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #006064; /* Dark Teal background */
+      color: white;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      z-index: 1000;
+    }
+    .fixed-header h1 {
+        text-align: left;
+        color: white;
+        margin: 0;
+        font-size: 1.5rem;
+    }
+    .fixed-header .header-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    /* NEW CSS for Status Bar - Timed/Fixed Notification */
+    #status {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        margin: 0;
+        padding: 10px 20px;
+        border-radius: 0;
+        transition: opacity 0.5s ease-in-out;
+        opacity: 1;
+        box-sizing: border-box;
+    }
+    .status.hidden {
+        opacity: 0;
+        height: 0;
+        padding: 0;
+    }
+    .status.ok { background:#c8e6c9; color:#1b5e20; border: none; }
+    .status.err { background:#ffcdd2; color:#b71c1c; border: none; }
+
+    /* Permanent Owner Info Block */
+    #ownerInfo { padding:15px; background:#fffde7; border: 1px solid #fff9c4; border-left: 5px solid #fdd835; border-radius:8px; margin-bottom:20px; font-size:14px; }
   </style>
 </head>
 <body>
-  <div class="max-w-[1200px] mx-auto">
-    <h1>🔑 Contract Administration & Real-Time Dashboard</h1>
-
+  
+  <!-- NEW: Fixed Header -->
+  <div class="fixed-header">
+    <div class="header-content">
+        <h1>🔑 Contract Administration & Real-Time Dashboard</h1>
+        <!-- Contract Owner Address will be inserted here temporarily -->
+        <div id="tempOwnerAddress" style="font-size: 0.9em; font-weight: 600; color: #b2ebf2;"></div>
+    </div>
     <div id="status" class="status err">Initializing...</div>
+  </div>
 
+  <div class="max-w-[1200px] mx-auto">
+    <!-- Main Content Grid -->
+    
     <div id="adminTools" class="grid grid-cols-1 lg:grid-cols-3 gap-6" style="display: none;">
       
       <!-- LEFT COLUMN: REAL-TIME DASHBOARD (2/3 width) -->
@@ -78,6 +139,11 @@
         </div>
 
         <div class="card p-6">
+            <!-- Permanent Owner Info Block -->
+            <div id="ownerInfo">
+                <p>Contract Owner Address: <strong id="ownerAddress">Loading...</strong></p>
+            </div>
+            
             <h2>📜 Live Event Log</h2>
             <div id="liveEventsLog">
                 <div class="event-item"><span style="color: #777;">Awaiting real-time events...</span></div>
@@ -89,11 +155,6 @@
       <!-- RIGHT COLUMN: ADMIN TOOLS (1/3 width) -->
       <div class="lg:col-span-1 space-y-6">
         <div class="card p-6">
-            <div id="ownerInfo">
-                <p>✅ **Admin Access Granted.**</p>
-                <p>Contract Owner: <strong id="ownerAddress">Loading...</strong></p>
-            </div>
-
             <section id="remove-user-section">
                 <h2>Remove User</h2>
                 <p style="font-size: 14px; color: #555;">Permanently revoke registration.</p>
@@ -145,7 +206,6 @@
       "function setRole(address user, string calldata role) external", 
       "function owner() public view returns (address)",
       "function getRole(address user) view returns (string memory)",
-      // Events for Dashboard Analytics
       "event UserAccess(address indexed user, uint256 timestamp)",
       "event Registered(address indexed user)",
       "event UserRemoved(address indexed user)",
@@ -161,6 +221,7 @@
       const s = el('status');
       s.textContent = text;
       s.className = 'status ' + (ok ? 'ok' : 'err');
+      s.classList.remove('hidden'); // Ensure visible when setting status
     }
     
     function showMsg(id, text, ok=true, duration=4000) {
@@ -174,6 +235,28 @@
     }
     
     function shortAddr(a) { return a ? `${a.slice(0, 6)}...${a.slice(-4)}` : "N/A"; }
+    
+    // NEW FUNCTION: Handles the timed display of the success message
+    function flashSuccessStatus(ownerAddress) {
+        const tempOwner = el('tempOwnerAddress');
+        const ownerInfo = el('ownerAddress');
+        
+        // 1. Display temporary owner address in the fixed header
+        tempOwner.innerHTML = `✅ Admin Access Granted. Owner: <strong style="color: white;">${shortAddr(ownerAddress)}</strong>`;
+        
+        // 2. Display success message in the fixed status bar
+        showStatus('Loading Dashboard metrics...', true);
+        
+        // 3. Hide status bar after 3 seconds and clear temporary address
+        setTimeout(() => {
+            el('status').classList.add('hidden');
+            tempOwner.textContent = ''; 
+        }, 3000);
+        
+        // 4. Update the permanent owner info block
+        ownerInfo.textContent = ownerAddress;
+    }
+
 
     async function initAdminPage() {
       if (typeof window.ethereum === "undefined") {
@@ -183,6 +266,7 @@
 
       try {
         showStatus('Connecting wallet & verifying admin access...', true);
+        
         provider = new ethers.providers.Web3Provider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         signer = provider.getSigner();
@@ -192,14 +276,15 @@
         contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer); 
 
         const contractOwner = await providerContract.owner();
-        el('ownerAddress').textContent = contractOwner;
-
+        
         if (currentAccount.toLowerCase() === contractOwner.toLowerCase()) {
-          showStatus('Admin Access Verified! Loading Dashboard...', true);
+          // --- SUCCESS PATH ---
+          flashSuccessStatus(contractOwner); // Show the flashy status
           el('adminTools').style.display = 'grid';
           initDashboard();
         } else {
-          showStatus("❌ Access Denied. Only the contract owner can access this page.", false);
+          // --- FAILURE PATH ---
+          showStatus(`❌ Access Denied. Only the contract owner (${shortAddr(contractOwner)}) can access this page.`, false);
         }
       } catch (error) {
         console.error("Admin verification error:", error);
@@ -207,18 +292,17 @@
       }
     }
     
-    // --- DASHBOARD FUNCTIONS (NEW) ---
+    // --- DASHBOARD FUNCTIONS (Rest of the logic is unchanged) ---
 
     function initDashboard() {
-        // Initialize Chart.js graph
         const ctx = el('loginAttemptsChart').getContext('2d');
         loginChart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: [], // Dates will go here
+                labels: [], 
                 datasets: [{
                     label: 'Daily Logins',
-                    data: [], // Counts will go here
+                    data: [], 
                     backgroundColor: 'rgba(0, 131, 143, 0.7)',
                     borderColor: '#00838f',
                     borderWidth: 1
@@ -237,7 +321,6 @@
         subscribeToLiveEvents();
     }
     
-    // Fetches all historical events for initial data load
     async function loadAllAnalytics() {
         if (!provider || !contract) return;
 
@@ -246,10 +329,8 @@
 
         try {
             const blockNumber = await provider.getBlockNumber();
-            // Fetch logs from the last 30,000 blocks (approx. 5-7 days depending on block time)
             const fromBlock = Math.max(0, blockNumber - 30000); 
 
-            // 1. Fetch UserAccess logs for the graph and total count
             const accessFilter = contract.filters.UserAccess();
             const accessLogs = await provider.getLogs({
                 address: CONTRACT_ADDRESS,
@@ -258,7 +339,6 @@
                 toBlock: 'latest'
             });
             
-            // 2. Fetch Registration logs for user count
             const registeredFilter = contract.filters.Registered();
             const removedFilter = contract.filters.UserRemoved();
             const deactivatedFilter = contract.filters.Deactivated();
@@ -283,7 +363,6 @@
             });
 
 
-            // --- Process Analytics ---
             updateRegisteredCount(registeredLogs, removedLogs, deactivatedLogs);
             updateAccessGraph(accessLogs);
             el('totalAccesses').textContent = accessLogs.length;
@@ -295,18 +374,15 @@
         }
     }
 
-    // Calculates registered count from historical events
     function updateRegisteredCount(registeredLogs, removedLogs, deactivatedLogs) {
         const activeUsers = new Map();
 
-        // Process registrations
         registeredLogs.forEach(log => {
             const parsedLog = contract.interface.parseLog(log);
             const userAddress = parsedLog.args.user.toLowerCase();
             activeUsers.set(userAddress, true);
         });
 
-        // Process removals and deactivations (subtractions)
         removedLogs.forEach(log => {
             const parsedLog = contract.interface.parseLog(log);
             const userAddress = parsedLog.args.user.toLowerCase();
@@ -318,11 +394,9 @@
             activeUsers.delete(userAddress);
         });
         
-        // This count is an approximation based on recent history
         el('registeredCount').textContent = activeUsers.size;
     }
     
-    // Aggregates log data and updates Chart.js
     function updateAccessGraph(logs) {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -330,7 +404,6 @@
 
         const dailyCounts = new Map();
         
-        // Initialize 7 days
         for (let i = 0; i < 7; i++) {
             const date = new Date();
             date.setDate(date.getDate() - (6 - i)); 
@@ -338,7 +411,6 @@
             dailyCounts.set(dateStr, 0);
         }
 
-        // Aggregate logs that occurred in the last 7 days
         logs.forEach(log => {
             const timestamp = parseInt(log.timeStamp, 16) * 1000;
             const logDate = new Date(timestamp);
@@ -349,7 +421,6 @@
             }
         });
 
-        // Prepare data for Chart.js
         const labels = Array.from(dailyCounts.keys());
         const data = Array.from(dailyCounts.values());
 
@@ -358,14 +429,11 @@
         loginChart.update();
     }
     
-    // Subscribes to new events in real-time
     function subscribeToLiveEvents() {
         el('liveEvents').textContent = 'Live';
 
-        // Listen for all key events and update the dashboard in real-time
         contract.on("UserAccess", (user, timestamp, event) => {
             addLiveEvent('UserAccess', user, timestamp.toNumber());
-            // Re-fetch analytics to update graph/total
             loadAllAnalytics(); 
         });
 
@@ -424,15 +492,12 @@
             <span style="color: #999; font-size: 0.8em;">${date}</span>
         `;
         
-        // Insert at the top of the log
         logList.insertBefore(item, logList.firstChild);
         
-        // Remove old entries to prevent overflow
         while (logList.children.length > 20) {
             logList.removeChild(logList.lastChild);
         }
     }
-
 
     // --- EXISTING ADMIN FUNCTIONS (Retained) ---
 
@@ -449,7 +514,7 @@
         await tx.wait();
         showMsg('removeStatus', `✅ User ${target} removed successfully. Dashboard updating...`, true);
         el('userAddressToRemove').value = ''; 
-        loadAllAnalytics(); // Refresh stats after mutation
+        loadAllAnalytics(); 
       } catch(err){
         console.error(err);
         showMsg('removeStatus', `❌ Failed to remove user: ${err.error?.message || err.message}`, false);
