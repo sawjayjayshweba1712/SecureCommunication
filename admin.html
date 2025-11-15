@@ -17,7 +17,7 @@
     input[type="text"], select { padding:10px; border-radius:6px; border:1px solid #ccc; width:calc(100% - 130px); margin-right:10px; box-sizing: border-box; }
     button { padding:10px 15px; border:0; border-radius:6px; cursor:pointer; font-weight:600; transition: background-color 0.2s ease; }
     .action-row { display:flex; align-items:center; margin-top:10px; gap:10px; }
-    .action-row input[type="text"] { flex-grow: 1; } /* Make address input take available space */
+    .action-row input[type="text"] { flex-grow: 1; }
     .action-row select { width: 150px; flex-shrink: 0; }
     .action-row button { flex-shrink: 0; }
 
@@ -34,8 +34,8 @@
     /* Access Log Styles */
     #logList { max-height: 300px; overflow-y: auto; background: #f1f8e9; border: 1px solid #dcedc8; padding: 10px; border-radius: 8px; margin-top: 10px; }
     .log-item { font-family: monospace; font-size: 13px; border-bottom: 1px dashed #c5e1a5; padding: 6px 4px; display: flex; justify-content: space-between; gap: 10px; }
-    .log-item span:first-child { color: #558b2f; } /* Date */
-    .log-item span:last-child { color: #33691e; word-break: break-all;} /* Address */
+    .log-item span:first-child { color: #558b2f; }
+    .log-item span:last-child { color: #33691e; word-break: break-all;}
     #refreshLogBtn { background: #0097a7; color: white; margin-bottom: 10px; }
      #refreshLogBtn:hover { background: #00796b; }
   </style>
@@ -72,8 +72,9 @@
             <div class="action-row">
                 <input type="text" id="userAddressToRole" placeholder="User's Ethereum Address (0x...)">
                 <select id="roleSelect">
+                    <!-- ✅ UPDATED ROLES -->
                     <option value="member">Member</option>
-                    <option value="moderator">Moderator</option>
+                    <option value="teacher">Teacher</option>
                     <option value="admin">Admin</option>
                     <option value="">(Remove Role)</option> </select>
                 <button id="assignRoleBtn" onclick="assignRole()">Set Role</button>
@@ -97,15 +98,15 @@
   </div>
 
   <script>
-    // ⚠️ PASTE YOUR *NEW* AuthManager CONTRACT ADDRESS HERE
-    const CONTRACT_ADDRESS = "0xE71c11CF485D9ac41f051b20018CF2d2bD1d2ABe";
+    // 💡 AuthManager Contract Address
+    const CONTRACT_ADDRESS = "0x8E542b72422D7919c49e21b40f5720A2d77A6C75";
     
     // MODIFIED: Added UserAccess event to ABI
     const CONTRACT_ABI = [
-      "function removeUser(address user) external", // onlyOwner is checked by contract
-      "function setRole(address user, string calldata role) external", // onlyOwner checked by contract
+      "function removeUser(address user) external", 
+      "function setRole(address user, string calldata role) external", 
       "function owner() public view returns (address)",
-      "event UserAccess(address indexed user, uint256 timestamp)" // NEW event
+      "event UserAccess(address indexed user, uint256 timestamp)" 
     ];
 
     let provider, signer, contract, currentAccount;
@@ -131,7 +132,7 @@
     async function initAdminPage() {
       if (typeof window.ethereum === "undefined") {
         showStatus("MetaMask not installed. Please install MetaMask.", false);
-        return; // Don't redirect, let user see the message
+        return;
       }
 
       try {
@@ -141,7 +142,6 @@
         signer = provider.getSigner();
         currentAccount = await signer.getAddress();
 
-        // Use provider for reading owner, signer for transactions
         const providerContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
         contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer); 
 
@@ -151,11 +151,9 @@
         if (currentAccount.toLowerCase() === contractOwner.toLowerCase()) {
           showStatus('Admin Access Verified!', true);
           el('adminTools').style.display = 'block';
-          await loadAccessLog(); // Load logs upon successful verification
+          await loadAccessLog();
         } else {
           showStatus("❌ Access Denied. Only the contract owner can access this page.", false);
-          // Optionally disable buttons or hide tools instead of redirecting
-          // For now, we just show the error message. User can still click 'Back'.
         }
       } catch (error) {
         console.error("Admin verification error:", error);
@@ -173,21 +171,18 @@
       
       try {
         const eventFilter = contract.filters.UserAccess();
-        // Query last ~5 days of blocks as an example. Adjust as needed.
-        // A full query (0, 'latest') might be slow on real networks.
         const blockNumber = await provider.getBlockNumber();
-        const fromBlock = Math.max(0, blockNumber - 30000); // Approx 5 days
+        const fromBlock = Math.max(0, blockNumber - 30000); 
         
         const logs = await contract.queryFilter(eventFilter, fromBlock, 'latest');
         
-        logList.innerHTML = ''; // Clear loading message
+        logList.innerHTML = ''; 
         
         if (logs.length === 0) {
           logList.innerHTML = '<div class="log-item"><span>No access logs found in recent blocks.</span></div>';
           return;
         }
 
-        // Display logs, newest first, max 50
         logs.slice().reverse().slice(0, 50).forEach(log => {
           const user = log.args.user;
           const timestamp = log.args.timestamp.toNumber();
@@ -195,7 +190,6 @@
           
           const item = document.createElement('div');
           item.className = 'log-item';
-          // Using spans for better potential styling
           item.innerHTML = `<span>${date}</span> <span>${user}</span>`; 
           logList.appendChild(item);
         });
@@ -210,15 +204,14 @@
       if(!contract) { showMsg('removeStatus', 'Wallet not connected.', false); return; }
       if(!ethers.utils.isAddress(target)){ showMsg('removeStatus', 'Invalid Ethereum address provided.', false); return; }
 
-      // Optional: Add confirmation dialog
       if (!confirm(`Are you sure you want to remove user ${target}? This action cannot be undone.`)) return;
 
       try {
-        showMsg('removeStatus', `Attempting to remove user ${target}... Confirm in MetaMask.`, true, 0); // No timeout
+        showMsg('removeStatus', `Attempting to remove user ${target}... Confirm in MetaMask.`, true, 0); 
         const tx = await contract.removeUser(target);
         await tx.wait();
         showMsg('removeStatus', `✅ User ${target} removed successfully.`, true);
-        el('userAddressToRemove').value = ''; // Clear input on success
+        el('userAddressToRemove').value = ''; 
       } catch(err){
         console.error(err);
         showMsg('removeStatus', `❌ Failed to remove user: ${err.error?.message || err.message}`, false);
@@ -227,7 +220,7 @@
 
     async function assignRole(){
       const target = el('userAddressToRole').value.trim();
-      const role = el('roleSelect').value; // Don't trim role, empty string means remove role
+      const role = el('roleSelect').value;
       if(!contract) { showMsg('roleStatus', 'Wallet not connected.', false); return; }
       if(!ethers.utils.isAddress(target)){ showMsg('roleStatus', 'Invalid Ethereum address provided.', false); return; }
 
@@ -235,11 +228,11 @@
        if (!confirm(`Are you sure you want to assign role ${roleText} to user ${target}?`)) return;
 
       try {
-        showMsg('roleStatus', `Attempting to set role ${roleText} for ${target}... Confirm in MetaMask.`, true, 0); // No timeout
+        showMsg('roleStatus', `Attempting to set role ${roleText} for ${target}... Confirm in MetaMask.`, true, 0);
         const tx = await contract.setRole(target, role);
         await tx.wait();
         showMsg('roleStatus', `✅ Role ${roleText} set for ${target} successfully.`, true);
-         el('userAddressToRole').value = ''; // Clear input on success
+         el('userAddressToRole').value = '';
       } catch(err){
         console.error(err);
         showMsg('roleStatus', `❌ Failed to set role: ${err.error?.message || err.message}`, false);
