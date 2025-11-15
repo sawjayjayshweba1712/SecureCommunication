@@ -120,3 +120,5 @@ p.isDeleted = true;
         emit PostDeleted(index, msg.sender);
     }
 }
+
+
