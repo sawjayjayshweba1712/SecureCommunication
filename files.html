@@ -26,8 +26,8 @@
     .btn { padding: 10px 15px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background-color 0.2s; }
     .btn-primary { background-color: var(--primary-color); color: white; }
     .btn-primary:hover { background-color: var(--primary-hover); }
-    .btn-success { background-color: var(--success-color); color: white; }
-    .btn-success:hover { background-color: #388e3c; }
+    .btn-success { background-color: #388e3c; color: white; }
+    .btn-success:hover { background-color: #2e7d32; }
     .status { padding: 10px; border-radius: 8px; margin-bottom: 15px; font-weight: 600; text-align: center; }
     .ok { background: #e8f5e9; color: #1b5e20; }
     .err { background: #ffebee; color: #b71c1c; }
@@ -37,9 +37,9 @@
     .box-item { border: 1px solid var(--border-color); padding: 20px; border-radius: 10px; background: #fcfcfc; }
     .box-item h3 { margin-top: 0; color: var(--primary-color); }
     .box-item p { font-size: 14px; margin: 5px 0; }
-    .overdue { color: var(--danger-color); font-weight: 600; }
     .submission-area { margin-top: 15px; padding-top: 10px; border-top: 1px dashed var(--border-color); }
     .submission-area input[type="text"], .submission-area input[type="file"] { width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
+    #submissionsList { background: #f0f0f0; padding: 10px; border-radius: 6px; margin-top: 10px; max-height: 150px; overflow-y: auto; font-size: 13px; }
   </style>
 </head>
 <body>
@@ -53,10 +53,10 @@
       <div id="createBoxSection" class="card" style="display: none; background: #e8f5e9; border: 1px solid #c8e6c9;">
         <h2>📝 Create New Submission Box (Admin/Teacher Only)</h2>
         <input type="text" id="boxTitle" placeholder="Assignment Title" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid #ccc;">
-        <label for="boxDeadline" style="display: block; margin-bottom: 5px; font-size: 14px;">Submission Deadline (UNIX Timestamp or Date/Time Input):</label>
-        <input type="text" id="boxDeadline" placeholder="e.g., 1764672000 (UNIX Timestamp)" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid #ccc;">
+        <label for="boxDeadline" style="display: block; margin-bottom: 5px; font-size: 14px;">Submission Deadline (Date/Text):</label>
+        <input type="text" id="boxDeadline" placeholder="e.g., May 15, 2026" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid #ccc;">
         <button id="createBoxBtn" class="btn btn-success" onclick="createSubmissionBox()">Create Box</button>
-        <div id="createBoxStatus" style="margin-top: 10px; font-size: 14px;"></div>
+        <div id="createBoxStatus" class="status" style="display:none; margin-top: 10px;"></div>
       </div>
 
       <h2>Active Assignments</h2>
@@ -68,25 +68,24 @@
 
   <script>
     // --- CONTRACT ADDRESSES ---
-    const AUTH_MANAGER_ADDRESS = "0xE71c11CF485D9ac41f051b20018CF2d2bD1d2ABe"; // From admin.html
-    const SUBMISSION_MANAGER_ADDRESS = "0x[YOUR_SUBMISSION_MANAGER_CONTRACT_ADDRESS]"; // REPLACE WITH YOUR DEPLOYED ADDRESS
+    const AUTH_MANAGER_ADDRESS = "0xE71c11CF485D9ac41f051b20018CF2d2bD1d2ABe"; // AuthManager Address
+    const FILE_REGISTRY_ADDRESS = "0x[YOUR_FILE_REGISTRY_CONTRACT_ADDRESS]"; // ⚠️ REPLACE THIS ADDRESS
 
     // --- ABIs ---
     const AUTH_MANAGER_ABI = [
-      "function getMyRole() external view returns (string memory)",
       "function getRole(address user) external view returns (string memory)"
     ];
     
-    // Minimal ABI for the functions we need
-    const SUBMISSION_MANAGER_ABI = [
-      "function createSubmissionBox(string calldata _title, uint256 _deadline) external",
-      "function submitFile(uint256 _boxId, string calldata _fileCID) external",
-      "function getSubmissionBoxCount() external view returns (uint256)",
-      "function submissionBoxes(uint256) external view returns (string title, address createdBy, uint256 deadline, bool isOpen)" 
-      // NOTE: Getting the submissions array requires a separate view function on the contract
+    // ABI for the FileRegistry contract (formerly SubmissionManager)
+    const FILE_REGISTRY_ABI = [
+      "function createBox(string calldata title, string calldata dueDate) external",
+      "function submitFile(uint256 boxId, string calldata fileName) external",
+      "function getBoxCount() external view returns (uint256)",
+      "function getBoxDetails(uint256 boxId) public view returns (string memory title, string memory dueDate, address teacher, uint256 submissionCount)",
+      "function getSubmissionFileName(uint256 boxId, address student) public view returns (string memory)"
     ];
 
-    let provider, signer, subManagerContract, authManagerContract, currentAccount, userRole;
+    let provider, signer, fileRegistryContract, authManagerContract, currentAccount, userRole;
 
     function el(id) { return document.getElementById(id); }
     function setStatus(text, isOk) { 
@@ -99,24 +98,9 @@
       d.style.display = 'block';
       d.textContent = text;
       d.className = isOk ? 'ok' : 'err';
-      setTimeout(() => { d.style.display = 'none'; }, duration);
+      if (duration > 0) setTimeout(() => { d.style.display = 'none'; }, duration);
     }
     function shortAddr(a) { return a ? `${a.slice(0, 6)}...${a.slice(-4)}` : ""; }
-    function formatDeadline(timestamp) {
-        if (timestamp.isZero() || timestamp.toNumber() === 0) return 'No Deadline';
-        
-        const ts = timestamp.toNumber();
-        const date = new Date(ts * 1000);
-        const now = Date.now();
-        const isOverdue = (ts * 1000) < now;
-        
-        let formattedDate = date.toLocaleString();
-        
-        if (isOverdue) {
-            return `<span class="overdue">Deadline: ${formattedDate} (Overdue)</span>`;
-        }
-        return `Deadline: ${formattedDate}`;
-    }
 
     async function init() {
       if (typeof window.ethereum === "undefined") {
@@ -131,7 +115,8 @@
         signer = provider.getSigner();
         currentAccount = await signer.getAddress();
         
-        subManagerContract = new ethers.Contract(SUBMISSION_MANAGER_ADDRESS, SUBMISSION_MANAGER_ABI, signer);
+        // Use signer for transactions (fileRegistryContract) and provider for reads (authManagerContract)
+        fileRegistryContract = new ethers.Contract(FILE_REGISTRY_ADDRESS, FILE_REGISTRY_ABI, signer);
         authManagerContract = new ethers.Contract(AUTH_MANAGER_ADDRESS, AUTH_MANAGER_ABI, provider);
 
         userRole = await authManagerContract.getRole(currentAccount);
@@ -149,29 +134,23 @@
       } catch (error) {
         console.error("Initialization error:", error);
         setStatus(`Error: Could not connect or verify role. ${error.message}`, false);
-        el('noBoxes').textContent = "Could not load data. Check console for contract errors.";
+        const noBoxesEl = el('noBoxes');
+        if (noBoxesEl) noBoxesEl.textContent = "Could not load data. Check console for contract errors.";
       }
     }
     
     // --- TEACHER/ADMIN FUNCTION ---
     async function createSubmissionBox() {
+        if (!fileRegistryContract) return showMsg('createBoxStatus', 'Wallet not connected.', false);
+        
         const title = el('boxTitle').value.trim();
-        const deadlineInput = el('boxDeadline').value.trim();
+        const dueDate = el('boxDeadline').value.trim() || 'N/A';
         
         if (!title) return showMsg('createBoxStatus', 'Title is required.', false);
         
-        let deadline = 0;
-        if (deadlineInput) {
-            // Simple check: assume user inputs a UNIX timestamp
-            deadline = parseInt(deadlineInput);
-            if (isNaN(deadline) || deadline < 0) {
-                 return showMsg('createBoxStatus', 'Invalid deadline timestamp.', false);
-            }
-        }
-
         try {
             showMsg('createBoxStatus', 'Sending transaction to create box... Confirm in MetaMask.', true, 0);
-            const tx = await subManagerContract.createSubmissionBox(title, deadline);
+            const tx = await fileRegistryContract.createBox(title, dueDate);
             await tx.wait();
             
             showMsg('createBoxStatus', 'Submission Box Created Successfully!', true);
@@ -181,97 +160,115 @@
             
         } catch(err) {
             console.error("Create Box Error:", err);
-            showMsg('createBoxStatus', `Failed: ${err.error?.message || err.message}`, false);
+            // The error message from the smart contract should be visible here
+            showMsg('createBoxStatus', `Failed: ${err.error?.message || err.message || 'Transaction failed.'}`, false);
         }
     }
 
     // --- GENERAL FUNCTIONS ---
     async function loadSubmissionBoxes() {
         const listEl = el('submissionBoxes');
+        const noBoxesEl = el('noBoxes'); 
+        
+        // Clear the list while preserving the noBoxes element
         listEl.innerHTML = '';
-        listEl.appendChild(el('noBoxes'));
-        el('noBoxes').textContent = "Loading submission boxes...";
+        if (noBoxesEl) {
+            listEl.appendChild(noBoxesEl); 
+            noBoxesEl.textContent = "Loading submission boxes...";
+        }
         
         try {
-            const countBigNum = await subManagerContract.getSubmissionBoxCount();
+            const countBigNum = await fileRegistryContract.getBoxCount();
             const count = countBigNum.toNumber();
             
             if (count === 0) {
-                el('noBoxes').textContent = "No submission boxes have been created yet.";
+                if (noBoxesEl) noBoxesEl.textContent = "No submission boxes have been created yet.";
                 return;
             }
             
+            // Clear the loading message now that we have posts
+            if (noBoxesEl) noBoxesEl.remove(); 
+            
             // Loop from newest to oldest
             for (let i = count - 1; i >= 0; i--) {
-                const box = await subManagerContract.submissionBoxes(i);
-                appendBoxToUI(i, box);
+                // Returns: title, dueDate, teacher, submissionCount
+                const box = await fileRegistryContract.getBoxDetails(i);
+                const submissionCID = await fileRegistryContract.getSubmissionFileName(i, currentAccount || "0x0000000000000000000000000000000000000001");
+                appendBoxToUI(i, box, submissionCID);
             }
-            el('noBoxes').remove(); // Remove the loading message
-            
+
         } catch(err) {
             console.error("Error loading boxes:", err);
-            el('noBoxes').textContent = "Error loading submission boxes.";
+            if (noBoxesEl) noBoxesEl.textContent = "Error loading submission boxes. (Check contract address)";
         }
     }
     
-    function appendBoxToUI(index, box) {
-        const isOverdue = box.deadline.toNumber() !== 0 && (box.deadline.toNumber() * 1000) < Date.now();
+    function appendBoxToUI(index, box, submissionCID) {
         const listEl = el('submissionBoxes');
         const boxItem = document.createElement('div');
         boxItem.className = 'box-item';
         boxItem.id = `box-${index}`;
         
-        let statusText = box.isOpen ? 'OPEN' : 'CLOSED';
-        if (isOverdue) statusText = 'OVERDUE';
+        const hasSubmitted = submissionCID && submissionCID.length > 0;
 
         boxItem.innerHTML = `
-            <h3>${box.title} (#${index}) <span style="float:right; font-size:14px; color:${isOverdue ? 'red' : box.isOpen ? 'green' : 'gray'};">${statusText}</span></h3>
-            <p><strong>Created By:</strong> ${shortAddr(box.createdBy)}</p>
-            <p>${formatDeadline(box.deadline)}</p>
+            <h3>${box.title} (#${index}) <span style="float:right; font-size:14px; color:${hasSubmitted ? 'green' : 'gray'};">${hasSubmitted ? 'Submitted' : 'Pending'}</span></h3>
+            <p><strong>Created By:</strong> ${shortAddr(box.teacher)}</p>
+            <p><strong>Due Date:</strong> ${box.dueDate}</p>
+            <p><strong>Total Submissions:</strong> ${box.submissionCount}</p>
             
             <div class="submission-area">
-                <h4>Your Submission</h4>
-                <input type="file" id="fileInput-${index}"> 
+                <h4>Your Submission (IPFS CID)</h4>
+                ${hasSubmitted 
+                    ? `<p style="color: green; word-break: break-all;">✅ Submitted CID: <strong>${submissionCID}</strong></p>`
+                    : `<input type="text" id="cidInput-${index}" placeholder="Enter IPFS File CID (e.g., Qm...)" style="margin-top: 5px;">
+                       <button class="btn btn-primary" onclick="submitFileCID(${index})">Submit File CID</button>`
+                }
+                <div id="submitStatus-${index}" class="status" style="display:none; margin-top: 10px;"></div>
                 
-                <input type="text" id="cidInput-${index}" placeholder="Enter IPFS File CID (e.g., Qm...)" style="margin-top: 5px;">
-                
-                <button class="btn btn-primary" onclick="submitFileCID(${index})">Submit File CID</button>
-                <div id="submitStatus-${index}" style="margin-top: 10px; font-size: 14px;"></div>
-                
-                </div>
+                ${(userRole === 'admin' || userRole === 'teacher') ? 
+                    `<div style="margin-top: 15px;">
+                        <button class="btn btn-success" onclick="viewSubmissions(${index}, ${box.submissionCount})">View ${box.submissionCount} Submissions</button>
+                        <div id="submissionsList-${index}" style="display:none; margin-top: 10px;">Loading submissions... (Requires new contract function)</div>
+                    </div>` 
+                    : ''}
+            </div>
         `;
         listEl.appendChild(boxItem);
     }
     
     // --- STUDENT/MEMBER FUNCTION ---
     async function submitFileCID(index) {
-        if (!subManagerContract) return alert("Please connect your wallet.");
+        if (!fileRegistryContract) return alert("Please connect your wallet.");
         
-        // In a real app, you'd handle the file upload here, get the CID, and use it below.
-        // For this example, we'll use the manual input field.
         const cid = el(`cidInput-${index}`).value.trim();
-        const statusEl = el(`submitStatus-${index}`);
         
         if (!cid) {
-            showMsg(`submitStatus-${index}`, 'Please enter a valid IPFS CID or upload a file.', false);
+            showMsg(`submitStatus-${index}`, 'Please enter a valid IPFS CID.', false);
             return;
         }
         
-        if (!confirm(`Are you sure you want to submit CID ${cid} to box #${index}?`)) return;
+        if (!confirm(`Are you sure you want to submit CID ${cid} to box #${index}? This cannot be changed.`)) return;
 
         try {
             showMsg(`submitStatus-${index}`, 'Sending transaction to submit CID... Confirm in MetaMask.', true, 0);
             
-            const tx = await subManagerContract.submitFile(index, cid);
+            // Use the submitFile function (CID is passed as fileName for simplicity)
+            const tx = await fileRegistryContract.submitFile(index, cid);
             await tx.wait();
             
             showMsg(`submitStatus-${index}`, `✅ Submission successful! CID: ${cid}`, true, 10000);
-            el(`cidInput-${index}`).value = ''; // Clear input
+            await loadSubmissionBoxes(); // Refresh the box to show status change
             
         } catch(err) {
             console.error("Submission Error:", err);
             showMsg(`submitStatus-${index}`, `❌ Submission Failed: ${err.error?.message || err.message}`, false);
         }
+    }
+    
+    // Placeholder for Teacher/Admin function
+    function viewSubmissions(boxId, count) {
+        alert(`Functionality TBD: Listing ${count} submissions for Box #${boxId}. This requires a new view function in the contract to iterate over student submissions.`);
     }
 
     window.onload = init;
