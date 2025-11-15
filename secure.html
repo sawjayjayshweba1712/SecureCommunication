@@ -53,8 +53,8 @@
       gap: 15px;
     }
     .container {
-      padding: 30px 10%; /* NEW: Padding for full width, adjust 10% as needed */
-      margin: 0 auto; /* Removed max-width for full screen */
+      padding: 30px 10%; 
+      margin: 0 auto; 
     }
     .btn {
       font-family: "Poppins", sans-serif;
@@ -83,7 +83,7 @@
     
     /* Public Wall - Use larger max-width for the main content card */
     #public-wall {
-      max-width: 1200px; /* NEW: Increased size */
+      max-width: 1200px; 
       width: 100%;
       margin: 20px auto;
       background: var(--card-bg);
@@ -273,15 +273,15 @@
 <body>
 
   <header>
-    <span>🎓 University Portal</span>
+    <span>雌 University Portal</span>
     <div class="header-controls">
       <button class="btn btn-primary" onclick="window.location.href='admin.html'" style="background-color: #ffb300; color: #333;">
-        🔐 Admin Panel
+        柏 Admin Panel
       </button>
       <button class="btn btn-primary" 
               onclick="window.location.href='files.html'" 
               style="background-color: var(--success-color); color: white;">
-        📁 Assignments
+        刀 Assignments
       </button>
       <button class="btn btn-danger" onclick="logout()">
         Logout
@@ -291,7 +291,7 @@
 
   <div class="container">
     <div id="public-wall">
-      <h2>🌐 University Public Wall</h2>
+      <h2>倹 University Public Wall</h2>
 
       <div id="wallet-info">
         <span id="wallet-status">
@@ -319,7 +319,7 @@
     
   </div>
 
-  <footer>© 2025 Secure Portal | Posts are stored on the blockchain.</footer>
+  <footer>ﾂｩ 2025 Secure Portal | Posts are stored on the blockchain.</footer>
 
   <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
@@ -357,7 +357,7 @@
     const postInput = document.getElementById("postInput");
     const postList = document.getElementById("postList");
     const postingStatus = document.getElementById("postingStatus");
-    const noPosts = document.getElementById("no-posts");
+    const noPosts = document.getElementById("no-posts"); // Reference to the <p id="no-posts"> element
     const fabButton = document.getElementById("fabButton");
 
     // NEW FUNCTION: Toggles the visibility of the post composer
@@ -377,7 +377,7 @@
         connectButton.innerText = "Install MetaMask";
         connectButton.onclick = () => window.open("https://metamask.io/");
         walletStatus.innerHTML = "<strong>MetaMask Not Found</strong>";
-        noPosts.textContent = "Please install MetaMask to use the Public Wall.";
+        if(noPosts) noPosts.textContent = "Please install MetaMask to use the Public Wall.";
         return;
       }
       
@@ -446,9 +446,15 @@
 
     async function loadPosts(contractInstance) {
        if(!contractInstance) return; 
-       if(noPosts) noPosts.textContent = "Loading posts from the blockchain...";
-       postList.innerHTML = ""; 
-       postList.appendChild(noPosts); 
+       
+       const noPostsEl = document.getElementById('no-posts'); // Safely re-fetch the element
+       
+       if (noPostsEl) {
+           noPostsEl.textContent = "Loading posts from the blockchain...";
+           // Ensure it is the only child initially
+           postList.innerHTML = ""; 
+           postList.appendChild(noPostsEl); 
+       }
       
       try {
         const countBigNum = await contractInstance.getPostCount();
@@ -473,20 +479,27 @@
           }
         }
         
-        postList.innerHTML = ""; 
+        postList.innerHTML = ""; // Clear list (including the loading message)
 
         if (visiblePostCount === 0) {
-          if(noPosts) noPosts.textContent = "No posts yet. Be the first!";
-          postList.appendChild(noPosts);
+          // If no posts, re-append the no-posts element and update its text
+          if(noPostsEl) {
+              noPostsEl.textContent = "No posts yet. Be the first!";
+              postList.appendChild(noPostsEl);
+          }
         } else {
+            // Render posts
             postsToRender.forEach(post => appendPostToUI(post));
         }
 
       } catch (err) {
         console.error("Load posts error:", err);
-        if(noPosts) noPosts.textContent = "Error: Could not load posts. Is the contract address correct and deployed?";
-        postList.innerHTML = ""; 
-        postList.appendChild(noPosts); 
+        // If error, re-append and update the no-posts message
+        if(noPostsEl) {
+            postList.innerHTML = ""; 
+            noPostsEl.textContent = "Error: Could not load posts. Is the contract address correct and deployed?";
+            postList.appendChild(noPostsEl);
+        }
       }
     }
 
@@ -513,12 +526,12 @@
       el.innerHTML = `
         ${deleteButtonHtml} 
         <div class="post-header">
-          <strong>${shortAddr(author)}</strong> • ${d.toLocaleString()}
+          <strong>${shortAddr(author)}</strong> 窶｢ ${d.toLocaleString()}
         </div>
         <div class="post-content">${escapeHtml(text)}</div>
 
         <button class="btn btn-primary btn-reaction" onclick="handleReaction(${index})">
-          👍 React (${reactionCount})
+          総 React (${reactionCount})
         </button>
 
         <div class="post-comments-section">
@@ -548,9 +561,12 @@
         const postElement = document.getElementById(`post-${index}`);
         if (postElement) postElement.remove();
         
+        // Check if the list is empty after deletion and re-add noPosts if needed
         if (postList.children.length === 0) {
-             if(noPosts) noPosts.textContent = "No posts yet. Be the first!";
-             postList.appendChild(noPosts);
+             const noPostsEl = document.getElementById('no-posts') || document.createElement('p');
+             noPostsEl.id = 'no-posts';
+             noPostsEl.textContent = "No posts yet. Be the first!";
+             postList.appendChild(noPostsEl);
         }
 
         setTimeout(() => setPostingStatus("", null), 3000);
