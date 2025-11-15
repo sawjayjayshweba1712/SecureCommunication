@@ -4,13 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Blockchain Auth - Home</title>
-  <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script> 
+  <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; background:#f7f9fc; }
     .card { max-width:700px; margin:auto; background:#fff; padding:28px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
     h1 { text-align:center; color:#222; }
     h3 { margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
-    .row { margin:12px 0; display:flex; gap:10px; align-items:center; } 
+    .row { margin:12px 0; display:flex; gap:10px; align-items:center; }
     button { padding:10px 14px; border:0; border-radius:6px; cursor:pointer; font-weight: 600; }
     #connectButton { background:#1e88e5; color:#fff; }
     #registerButton { background:#43a047; color:#fff; }
@@ -75,18 +75,15 @@
     // ⚠️ PASTE YOUR *NEW* AuthManager CONTRACT ADDRESS HERE
     const CONTRACT_ADDRESS = "0x0C04CccB10696083D9D10Da88251a7f512763227";
     
-    // MODIFIED: Added all necessary functions for authentication and rotation
+    // MODIFIED: Added updateDID to the ABI
     const CONTRACT_ABI = [
       "function register() public",
       "function deactivateAccount() public",
-      // Added for authentication:
-      "function getChallenge() external returns (bytes32)", 
-      "function verifySignature(bytes32 challenge, bytes memory signature) external", 
-      
+      "function authenticate(address user) external view returns (bool)",
       "function setProfileCID(string calldata cid) external",
       "function isRegistered(address user) external view returns (bool)",
-      // Added for key rotation:
-      "function updateDID(address newWallet) external", 
+      "function logAccess() external", 
+      "function updateDID(address newWallet) external", // NEW function
       "event UserAccess(address indexed user, uint256 timestamp)"
     ];
 
@@ -110,25 +107,26 @@
     async function registerUser(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try{const tx=await contract.register();showMsg('registerMessage','Confirm registration in MetaMask...');await tx.wait();showMsg('registerMessage','Registered successfully!');}catch(e){showMsg('registerMessage', e.error?.message || e.message || 'Registration failed.',false);}}
     
     async function authenticateUser(){
-      if(!contract){ showMsg('authMessage','Connect wallet first',false); return; }
-
-  try {
-    // 1️⃣ Get challenge from contract
-    const challenge = await contract.getChallenge();
-
-    // 2️⃣ Ask user to sign challenge
-    const signature = await signer.signMessage(ethers.utils.arrayify(challenge));
-
-    // 3️⃣ Send signature to contract to verify
-    const tx = await contract.verifySignature(challenge, signature);
-    await tx.wait();
-
-    showMsg('authMessage','✅ Authentication successful! Access logged.', true);
-    setTimeout(()=>window.location.href='dashboard.html',1500);
-  } catch(e){
-    console.error("Authentication Error:", e);
-    showMsg('authMessage', e.error?.message || e.message || 'Authentication failed.', false);
-  }
+      if(!contract){showMsg('authMessage','Connect wallet first',false);return;}
+      
+      try {
+        const isAuth = await contract.authenticate(currentAccount);
+        
+        if(isAuth){
+          showMsg('authMessage','Authenticated! Logging your access...', true);
+          const tx = await contract.logAccess(); 
+          await tx.wait(); 
+          
+          showMsg('authMessage','Access logged! Redirecting to dashboard...', true);
+          setTimeout(()=>window.location.href='dashboard.html', 1500); 
+        
+        } else {
+          showMsg('authMessage','Authentication Failed: User not registered.',false);
+        }
+      } catch (e) {
+          console.error("Authentication or Logging Error:", e);
+          showMsg('authMessage', e.error?.message || e.message || 'Authentication or logging failed.', false);
+      }
     }
     
     async function deactivateAccount(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try { const tx=await contract.deactivateAccount(); showMsg('registerMessage', 'Confirm deactivation in MetaMask...'); await tx.wait(); showMsg('registerMessage','Account deactivated successfully.');} catch(e) { showMsg('registerMessage', e.error?.message || e.message || 'Deactivation failed.', false); }}
