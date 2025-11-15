@@ -3,13 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Management - Contract Owner Only</title>
+  <title>Admin Management - Real-Time Dashboard</title>
   <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <!-- Chart.js for graphing login attempts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background:#e0f7fa; color:#222; }
-    .card { max-width:800px; margin:auto; background:#fff; padding:30px; border-radius:15px; box-shadow:0 8px 25px rgba(0,0,0,0.1); }
-    h1 { text-align:center; color:#006064; }
-    h2 { color:#00838f; border-bottom:2px solid #e0f7fa; padding-bottom:5px; margin-top:20px; }
+    body { font-family: 'Arial', sans-serif; padding: 20px; background:#e0f7fa; color:#222; }
+    .card { background:#fff; padding:30px; border-radius:15px; box-shadow:0 8px 25px rgba(0,0,0,0.1); height: 100%; }
+    h1 { text-align:center; color:#006064; margin-bottom: 25px; }
+    h2 { color:#00838f; border-bottom:2px solid #e0f7fa; padding-bottom:5px; margin-top:20px; font-weight: 700; }
     .status { padding:12px; border-radius:8px; margin-bottom:15px; text-align:center; font-weight: bold; }
     .ok { background:#e8f5e9; color:#1b5e20; border:1px solid #c8e6c9; }
     .err { background:#ffebee; color:#b71c1c; border:1px solid #ffcdd2; }
@@ -20,110 +22,138 @@
     .action-row input[type="text"] { flex-grow: 1; }
     .action-row select { width: 150px; flex-shrink: 0; }
     .action-row button { flex-shrink: 0; }
-
     #removeUserBtn { background:#ef5350; color:#fff; }
-    #removeUserBtn:hover { background:#d32f2f; }
     #assignRoleBtn { background:#43a047; color:#fff; }
-    #assignRoleBtn:hover { background:#2e7d32; }
     #checkRoleBtn { background:#00bcd4; color:#fff; }
-    #checkRoleBtn:hover { background:#0097a7; }
-    #backBtn { background:#78909c; color:#fff; margin-top:30px; }
-    #backBtn:hover { background: #546e7a; }
+    #dashboardBackBtn { background:#78909c; color:#fff; margin-top:30px; }
     #ownerInfo { padding:15px; background:#fffde7; border: 1px solid #fff9c4; border-left: 5px solid #fdd835; border-radius:8px; margin-bottom:20px; font-size:14px; }
-    #ownerInfo p { margin: 5px 0; }
-    #ownerInfo strong { font-family: monospace; }
     
-    /* Access Log Styles */
-    #logList { max-height: 300px; overflow-y: auto; background: #f1f8e9; border: 1px solid #dcedc8; padding: 10px; border-radius: 8px; margin-top: 10px; }
-    .log-item { font-family: monospace; font-size: 13px; border-bottom: 1px dashed #c5e1a5; padding: 6px 4px; display: flex; justify-content: space-between; gap: 10px; }
-    .log-item span:first-child { color: #558b2f; }
-    .log-item span:last-child { color: #33691e; word-break: break-all;}
-    #refreshLogBtn { background: #0097a7; color: white; margin-bottom: 10px; }
-     #refreshLogBtn:hover { background: #00796b; }
+    /* Dashboard Specific Styles */
+    .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
+    .metric-card { background: #f0fcfc; padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #b2ebf2; }
+    .metric-value { font-size: 2em; font-weight: 700; color: #00838f; }
+    .metric-label { font-size: 0.9em; color: #555; }
+    
+    #liveEventsLog { max-height: 250px; overflow-y: auto; background: #fff; border: 1px solid #eee; padding: 10px; border-radius: 8px; margin-top: 10px; }
+    .event-item { font-family: monospace; font-size: 13px; border-bottom: 1px dashed #e0f7fa; padding: 4px 0; display: flex; justify-content: space-between; align-items: center; }
+    .event-type { font-weight: 700; padding: 2px 5px; border-radius: 4px; font-size: 0.7em; }
+    .log-access { background: #e3f2fd; color: #1565c0; }
+    .log-registered { background: #e8f5e9; color: #2e7d32; }
+    .log-did { background: #fff3e0; color: #e65100; }
+    .log-user-removed { background: #ffebee; color: #d32f2f; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>🔑 Contract Administration</h1>
+  <div class="max-w-[1200px] mx-auto">
+    <h1>🔑 Contract Administration & Real-Time Dashboard</h1>
 
     <div id="status" class="status err">Initializing...</div>
 
-    <div id="adminTools" style="display: none;">
-        <div id="ownerInfo">
-            <p>✅ **Admin Access Granted.** You are connected as the Contract Owner.</p>
-            <p>Contract Owner Address: <strong id="ownerAddress">Loading...</strong></p>
+    <div id="adminTools" class="grid grid-cols-1 lg:grid-cols-3 gap-6" style="display: none;">
+      
+      <!-- LEFT COLUMN: REAL-TIME DASHBOARD (2/3 width) -->
+      <div class="lg:col-span-2 space-y-6">
+        <div class="card p-6">
+            <h2>📊 Real-Time Authentication Metrics</h2>
+            
+            <div class="metric-grid">
+                <div class="metric-card">
+                    <div id="registeredCount" class="metric-value">...</div>
+                    <div class="metric-label">Registered Users</div>
+                </div>
+                <div class="metric-card">
+                    <div id="totalAccesses" class="metric-value">...</div>
+                    <div class="metric-label">Total Access Logs</div>
+                </div>
+                <div class="metric-card">
+                    <div id="liveEvents" class="metric-value">...</div>
+                    <div class="metric-label">Live Event Feed</div>
+                </div>
+            </div>
+            
+            <div style="height: 300px; padding: 10px; border: 1px solid #eee; border-radius: 8px;">
+                <canvas id="loginAttemptsChart"></canvas>
+            </div>
+            <p style="text-align: center; font-size: 0.9em; color: #555; margin-top: 10px;">Login Attempts by Day (Last 7 Days)</p>
         </div>
 
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 25px 0;" />
-
-        <section id="remove-user-section">
-            <h2>Remove User</h2>
-            <p style="font-size: 14px; color: #555;">Permanently revoke registration for a user address.</p>
-            <div class="action-row">
-                <input type="text" id="userAddressToRemove" placeholder="User's Ethereum Address (0x...)" >
-                <button id="removeUserBtn" onclick="removeUser()">Remove User</button>
+        <div class="card p-6">
+            <h2>📜 Live Event Log</h2>
+            <div id="liveEventsLog">
+                <div class="event-item"><span style="color: #777;">Awaiting real-time events...</span></div>
             </div>
-            <div id="removeStatus" class="message" style="display:none;"></div>
-        </section>
+        </div>
 
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 25px 0;" />
+      </div>
 
-        <section id="assign-role-section">
-            <h2>Assign User Role</h2>
-             <p style="font-size: 14px; color: #555;">Assign a role to a registered user address.</p>
-            <div class="action-row">
-                <input type="text" id="userAddressToRole" placeholder="User's Ethereum Address (0x...)">
-                <select id="roleSelect">
-                    <option value="member">Member</option>
-                    <option value="teacher">Teacher</option>
-                    <option value="admin">Admin</option>
-                    <option value="">(Remove Role)</option> </select>
-                <button id="assignRoleBtn" onclick="assignRole()">Set Role</button>
+      <!-- RIGHT COLUMN: ADMIN TOOLS (1/3 width) -->
+      <div class="lg:col-span-1 space-y-6">
+        <div class="card p-6">
+            <div id="ownerInfo">
+                <p>✅ **Admin Access Granted.**</p>
+                <p>Contract Owner: <strong id="ownerAddress">Loading...</strong></p>
             </div>
-            <div id="roleStatus" class="message" style="display:none;"></div>
-        </section>
-        
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 25px 0;" />
-        
-        <section id="check-role-section">
-            <h2>🔎 Check User Role</h2>
-            <p style="font-size: 14px; color: #555;">Enter an address to view its assigned role from the contract.</p>
-            <div class="action-row">
-                <input type="text" id="userAddressToRead" placeholder="User's Ethereum Address (0x...)">
-                <button id="checkRoleBtn" onclick="checkRole()">Check Role</button>
-            </div>
-            <div id="checkRoleStatus" class="message" style="display:none;"></div>
-        </section>
 
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 25px 0;" />
+            <section id="remove-user-section">
+                <h2>Remove User</h2>
+                <p style="font-size: 14px; color: #555;">Permanently revoke registration.</p>
+                <div class="action-row">
+                    <input type="text" id="userAddressToRemove" placeholder="User's Address (0x...)" >
+                    <button id="removeUserBtn" onclick="removeUser()">Remove User</button>
+                </div>
+                <div id="removeStatus" class="message" style="display:none;"></div>
+            </section>
 
-        <section id="access-log-section">
-            <h2>System Access Log (Most Recent 50)</h2>
-            <button id="refreshLogBtn" onclick="loadAccessLog()">🔄 Refresh Log</button>
-            <div id="logList">
-                <div class="log-item"><span>Loading logs...</span></div>
-            </div>
-        </section>
-        
+            <section id="assign-role-section">
+                <h2>Assign Role</h2>
+                 <p style="font-size: 14px; color: #555;">Assign a role to a registered user.</p>
+                <div class="action-row">
+                    <input type="text" id="userAddressToRole" placeholder="User's Address (0x...)">
+                    <select id="roleSelect">
+                        <option value="member">Member</option>
+                        <option value="teacher">Teacher</option>
+                        <option value="admin">Admin</option>
+                        <option value="">(Remove Role)</option> </select>
+                    <button id="assignRoleBtn" onclick="assignRole()">Set Role</button>
+                </div>
+                <div id="roleStatus" class="message" style="display:none;"></div>
+            </section>
+            
+            <section id="check-role-section">
+                <h2>🔎 Check User Role</h2>
+                <p style="font-size: 14px; color: #555;">View assigned role.</p>
+                <div class="action-row">
+                    <input type="text" id="userAddressToRead" placeholder="User's Address (0x...)">
+                    <button id="checkRoleBtn" onclick="checkRole()">Check Role</button>
+                </div>
+                <div id="checkRoleStatus" class="message" style="display:none;"></div>
+            </section>
+        </div>
+      </div>
     </div>
 
-    <button id="backBtn" onclick="window.location.href='secure.html'">← Back to Public Wall</button>
+    <button id="dashboardBackBtn" onclick="window.location.href='secure.html'">← Back to Public Wall</button>
   </div>
 
   <script>
-    // 💡 AuthManager Contract Address (UPDATED to latest deployment)
+    // 💡 AuthManager Contract Address
     const CONTRACT_ADDRESS = "0xE71c11CF485D9ac41f051b20018CF2d2bD1d2ABe";
     
-    // MODIFIED: Added UserAccess event to ABI and getRole for role checking
+    // UPDATED ABI: Includes all events needed for the dashboard and key rotation
     const CONTRACT_ABI = [
       "function removeUser(address user) external", 
       "function setRole(address user, string calldata role) external", 
       "function owner() public view returns (address)",
-      "function getRole(address user) view returns (string memory)", // Added for checkRole function
-      "event UserAccess(address indexed user, uint256 timestamp)" 
+      "function getRole(address user) view returns (string memory)",
+      // Events for Dashboard Analytics
+      "event UserAccess(address indexed user, uint256 timestamp)",
+      "event Registered(address indexed user)",
+      "event UserRemoved(address indexed user)",
+      "event Deactivated(address indexed user)",
+      "event DIDUpdated(address indexed oldWallet, address indexed newWallet)"
     ];
 
-    let provider, signer, contract, currentAccount;
+    let provider, signer, contract, currentAccount, loginChart;
 
     function el(id){ return document.getElementById(id); }
     
@@ -142,6 +172,8 @@
          setTimeout(() => { d.style.display = 'none'; }, duration);
       }
     }
+    
+    function shortAddr(a) { return a ? `${a.slice(0, 6)}...${a.slice(-4)}` : "N/A"; }
 
     async function initAdminPage() {
       if (typeof window.ethereum === "undefined") {
@@ -163,9 +195,9 @@
         el('ownerAddress').textContent = contractOwner;
 
         if (currentAccount.toLowerCase() === contractOwner.toLowerCase()) {
-          showStatus('Admin Access Verified!', true);
-          el('adminTools').style.display = 'block';
-          await loadAccessLog();
+          showStatus('Admin Access Verified! Loading Dashboard...', true);
+          el('adminTools').style.display = 'grid';
+          initDashboard();
         } else {
           showStatus("❌ Access Denied. Only the contract owner can access this page.", false);
         }
@@ -174,58 +206,250 @@
         showStatus(`Error: Could not connect or verify ownership. ${error.message}`, false);
       }
     }
+    
+    // --- DASHBOARD FUNCTIONS (NEW) ---
 
-    async function loadAccessLog() {
-      if (!contract) { 
-        showStatus("Wallet not connected or contract not initialized.", false);
-        return;
-      }
-      const logList = el('logList');
-      logList.innerHTML = '<div class="log-item"><span>Fetching access logs...</span></div>';
-      
-      try {
-        const eventFilter = contract.filters.UserAccess();
-        const blockNumber = await provider.getBlockNumber();
-        const fromBlock = Math.max(0, blockNumber - 30000); 
+    function initDashboard() {
+        // Initialize Chart.js graph
+        const ctx = el('loginAttemptsChart').getContext('2d');
+        loginChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [], // Dates will go here
+                datasets: [{
+                    label: 'Daily Logins',
+                    data: [], // Counts will go here
+                    backgroundColor: 'rgba(0, 131, 143, 0.7)',
+                    borderColor: '#00838f',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, ticks: { precision: 0 } }
+                }
+            }
+        });
+
+        loadAllAnalytics();
+        subscribeToLiveEvents();
+    }
+    
+    // Fetches all historical events for initial data load
+    async function loadAllAnalytics() {
+        if (!provider || !contract) return;
+
+        el('registeredCount').textContent = '...';
+        el('totalAccesses').textContent = '...';
+
+        try {
+            const blockNumber = await provider.getBlockNumber();
+            // Fetch logs from the last 30,000 blocks (approx. 5-7 days depending on block time)
+            const fromBlock = Math.max(0, blockNumber - 30000); 
+
+            // 1. Fetch UserAccess logs for the graph and total count
+            const accessFilter = contract.filters.UserAccess();
+            const accessLogs = await provider.getLogs({
+                address: CONTRACT_ADDRESS,
+                topics: accessFilter.topics,
+                fromBlock: fromBlock,
+                toBlock: 'latest'
+            });
+            
+            // 2. Fetch Registration logs for user count
+            const registeredFilter = contract.filters.Registered();
+            const removedFilter = contract.filters.UserRemoved();
+            const deactivatedFilter = contract.filters.Deactivated();
+
+            const registeredLogs = await provider.getLogs({
+                address: CONTRACT_ADDRESS,
+                topics: registeredFilter.topics,
+                fromBlock: fromBlock,
+                toBlock: 'latest'
+            });
+            const removedLogs = await provider.getLogs({
+                address: CONTRACT_ADDRESS,
+                topics: removedFilter.topics,
+                fromBlock: fromBlock,
+                toBlock: 'latest'
+            });
+            const deactivatedLogs = await provider.getLogs({
+                address: CONTRACT_ADDRESS,
+                topics: deactivatedFilter.topics,
+                fromBlock: fromBlock,
+                toBlock: 'latest'
+            });
+
+
+            // --- Process Analytics ---
+            updateRegisteredCount(registeredLogs, removedLogs, deactivatedLogs);
+            updateAccessGraph(accessLogs);
+            el('totalAccesses').textContent = accessLogs.length;
+
+        } catch (err) {
+            console.error("Error loading historical analytics:", err);
+            el('registeredCount').textContent = 'Error';
+            el('totalAccesses').textContent = 'Error';
+        }
+    }
+
+    // Calculates registered count from historical events
+    function updateRegisteredCount(registeredLogs, removedLogs, deactivatedLogs) {
+        const activeUsers = new Map();
+
+        // Process registrations
+        registeredLogs.forEach(log => {
+            const parsedLog = contract.interface.parseLog(log);
+            const userAddress = parsedLog.args.user.toLowerCase();
+            activeUsers.set(userAddress, true);
+        });
+
+        // Process removals and deactivations (subtractions)
+        removedLogs.forEach(log => {
+            const parsedLog = contract.interface.parseLog(log);
+            const userAddress = parsedLog.args.user.toLowerCase();
+            activeUsers.delete(userAddress);
+        });
+        deactivatedLogs.forEach(log => {
+            const parsedLog = contract.interface.parseLog(log);
+            const userAddress = parsedLog.args.user.toLowerCase();
+            activeUsers.delete(userAddress);
+        });
         
-        const logs = await contract.queryFilter(eventFilter, fromBlock, 'latest');
+        // This count is an approximation based on recent history
+        el('registeredCount').textContent = activeUsers.size;
+    }
+    
+    // Aggregates log data and updates Chart.js
+    function updateAccessGraph(logs) {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        sevenDaysAgo.setHours(0, 0, 0, 0);
+
+        const dailyCounts = new Map();
         
-        logList.innerHTML = ''; 
-        
-        if (logs.length === 0) {
-          logList.innerHTML = '<div class="log-item"><span>No access logs found in recent blocks.</span></div>';
-          return;
+        // Initialize 7 days
+        for (let i = 0; i < 7; i++) {
+            const date = new Date();
+            date.setDate(date.getDate() - (6 - i)); 
+            const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            dailyCounts.set(dateStr, 0);
         }
 
-        logs.slice().reverse().slice(0, 50).forEach(log => {
-          const user = log.args.user;
-          const timestamp = log.args.timestamp.toNumber();
-          const date = new Date(timestamp * 1000).toLocaleString();
-          
-          const item = document.createElement('div');
-          item.className = 'log-item';
-          item.innerHTML = `<span>${date}</span> <span>${user}</span>`; 
-          logList.appendChild(item);
+        // Aggregate logs that occurred in the last 7 days
+        logs.forEach(log => {
+            const timestamp = parseInt(log.timeStamp, 16) * 1000;
+            const logDate = new Date(timestamp);
+            
+            if (logDate >= sevenDaysAgo) {
+                const dateStr = logDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                dailyCounts.set(dateStr, (dailyCounts.get(dateStr) || 0) + 1);
+            }
         });
-      } catch (err) {
-        console.error("Error loading logs:", err);
-        logList.innerHTML = '<div class="log-item" style="color:red;"><span>Error loading access logs.</span></div>';
-      }
+
+        // Prepare data for Chart.js
+        const labels = Array.from(dailyCounts.keys());
+        const data = Array.from(dailyCounts.values());
+
+        loginChart.data.labels = labels;
+        loginChart.data.datasets[0].data = data;
+        loginChart.update();
     }
+    
+    // Subscribes to new events in real-time
+    function subscribeToLiveEvents() {
+        el('liveEvents').textContent = 'Live';
+
+        // Listen for all key events and update the dashboard in real-time
+        contract.on("UserAccess", (user, timestamp, event) => {
+            addLiveEvent('UserAccess', user, timestamp.toNumber());
+            // Re-fetch analytics to update graph/total
+            loadAllAnalytics(); 
+        });
+
+        contract.on("Registered", (user, event) => {
+            addLiveEvent('Registered', user, Math.floor(Date.now() / 1000));
+            loadAllAnalytics(); 
+        });
+        
+        contract.on("UserRemoved", (user, event) => {
+            addLiveEvent('UserRemoved', user, Math.floor(Date.now() / 1000));
+            loadAllAnalytics(); 
+        });
+        
+        contract.on("Deactivated", (user, event) => {
+            addLiveEvent('Deactivated', user, Math.floor(Date.now() / 1000));
+            loadAllAnalytics(); 
+        });
+
+        contract.on("DIDUpdated", (oldWallet, newWallet, event) => {
+            addLiveEvent('DIDUpdated', oldWallet, Math.floor(Date.now() / 1000), newWallet);
+            loadAllAnalytics(); 
+        });
+    }
+
+    function addLiveEvent(type, user, timestamp, newWallet = null) {
+        const logList = el('liveEventsLog');
+        const date = new Date(timestamp * 1000).toLocaleTimeString();
+        
+        const item = document.createElement('div');
+        item.className = 'event-item';
+
+        let tagClass, message;
+        
+        if (type === 'UserAccess') {
+            tagClass = 'log-access';
+            message = `User ${shortAddr(user)} logged in.`;
+        } else if (type === 'Registered') {
+            tagClass = 'log-registered';
+            message = `New user registered: ${shortAddr(user)}.`;
+        } else if (type === 'UserRemoved' || type === 'Deactivated') {
+            tagClass = 'log-user-removed';
+            message = `User ${shortAddr(user)} removed/deactivated.`;
+        } else if (type === 'DIDUpdated') {
+            tagClass = 'log-did';
+            message = `Key Rotation: ${shortAddr(user)} → ${shortAddr(newWallet)}.`;
+        } else {
+            tagClass = 'log-user-removed';
+            message = `Unknown Event by ${shortAddr(user)}.`;
+        }
+
+        item.innerHTML = `
+            <div>
+                <span class="event-type ${tagClass}">${type.toUpperCase()}</span>
+                <span style="margin-left: 8px;">${message}</span>
+            </div>
+            <span style="color: #999; font-size: 0.8em;">${date}</span>
+        `;
+        
+        // Insert at the top of the log
+        logList.insertBefore(item, logList.firstChild);
+        
+        // Remove old entries to prevent overflow
+        while (logList.children.length > 20) {
+            logList.removeChild(logList.lastChild);
+        }
+    }
+
+
+    // --- EXISTING ADMIN FUNCTIONS (Retained) ---
 
     async function removeUser(){
       const target = el('userAddressToRemove').value.trim();
       if(!contract) { showMsg('removeStatus', 'Wallet not connected.', false); return; }
       if(!ethers.utils.isAddress(target)){ showMsg('removeStatus', 'Invalid Ethereum address provided.', false); return; }
 
-      if (!confirm(`Are you sure you want to remove user ${target}? This action cannot be undone.`)) return;
+      if (!confirm(`Are you sure you want to remove user ${target}? This action cannot be undone on the blockchain.`)) return;
 
       try {
         showMsg('removeStatus', `Attempting to remove user ${target}... Confirm in MetaMask.`, true, 0); 
         const tx = await contract.removeUser(target);
         await tx.wait();
-        showMsg('removeStatus', `✅ User ${target} removed successfully.`, true);
+        showMsg('removeStatus', `✅ User ${target} removed successfully. Dashboard updating...`, true);
         el('userAddressToRemove').value = ''; 
+        loadAllAnalytics(); // Refresh stats after mutation
       } catch(err){
         console.error(err);
         showMsg('removeStatus', `❌ Failed to remove user: ${err.error?.message || err.message}`, false);
@@ -259,7 +483,6 @@
       if(!ethers.utils.isAddress(target)){ showMsg('checkRoleStatus', 'Invalid Ethereum address provided.', false); return; }
       
       try {
-        // Call the view function to get the role
         const role = await contract.getRole(target); 
         
         const roleText = role || "N/A (Default: Member/Student)";
