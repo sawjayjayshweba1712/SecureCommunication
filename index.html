@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-<head> 
-  <meta charset="utf-8" /> 
+<head>
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Blockchain Auth - Home</title>
   <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <style> 
+  <style>
     body { font-family: Arial, sans-serif; padding: 20px; background:#f7f9fc; }
     .card { max-width:700px; margin:auto; background:#fff; padding:28px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
     h1 { text-align:center; color:#222; }
@@ -73,7 +73,7 @@
 
   <script>
 
-    const CONTRACT_ADDRESS = "0xbF1Bc8e3354600914376c7d6bE5981b18D79ddD8";
+    const CONTRACT_ADDRESS = "0xd1968a1b2250233500D4dd3967012928e87Ef66c";
     
     // MODIFIED ABI: Removed old 'authenticate' and 'logAccess', added new secure functions
     const CONTRACT_ABI = [
@@ -110,43 +110,44 @@
     async function registerUser(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try{const tx=await contract.register();showMsg('registerMessage','Confirm registration in MetaMask...');await tx.wait();showMsg('registerMessage','Registered successfully!');}catch(e){showMsg('registerMessage', e.error?.message || e.message || 'Registration failed.',false);}}
     
     // NEW SECURE AUTHENTICATION FUNCTION (Challenge-Response)
-    async function authenticateUser(){
-      if(!contract){showMsg('authMessage','Connect wallet first',false);return;}
-      
-      try {
-        // --- STEP 1: Get the current nonce/challenge from the contract ---
-        const nonceBigNum = await contract.getNonce(currentAccount);
-        const nonce = nonceBigNum.toNumber();
+// NEW SECURE AUTHENTICATION FUNCTION (Challenge-Response - Hash Alignment Fix)
+async function authenticateUser(){
+  if(!contract){showMsg('authMessage','Connect wallet first',false);return;}
+  
+  try {
+    // --- STEP 1: Get the current nonce/challenge from the contract ---
+    const nonceBigNum = await contract.getNonce(currentAccount);
+    const nonce = nonceBigNum.toNumber();
 
-        // --- STEP 2: Create the challenge message (MUST MATCH THE CONTRACT EXACTLY) ---
-        // Contract hashes: "UniversityPortalLogin:" + nonce
-        const challengeMessage = `UniversityPortalLogin:${nonce}`;
-        
-        // --- STEP 3: Sign the message with the current wallet (MetaMask prompt) ---
-        showMsg('authMessage',`Confirm the login signature in MetaMask. Challenge: ${challengeMessage}`, true);
-        // Ethers' signer.signMessage handles the EIP-191 prefixing.
-        const signature = await signer.signMessage(challengeMessage); 
+    // --- STEP 2: Create the exact challenge message string (human-readable) ---
+    // The contract logic is now perfectly aligned to hash this specific string.
+    const challengeMessage = `UniversityPortalLogin:${nonce}`;
+    
+    // --- STEP 3: Sign the message with the current wallet (MetaMask prompt) ---
+    showMsg('authMessage',`Confirm the login signature in MetaMask. Challenge: ${challengeMessage}`, true);
+    
+    // Ethers' signer.signMessage handles the EIP-191 prefixing perfectly for this string.
+    const signature = await signer.signMessage(challengeMessage); 
 
-        // --- STEP 4: Send the signature back to the contract for verification ---
-        showMsg('authMessage','Signature confirmed. Sending to blockchain for verification...', true);
-        
-        const tx = await contract.authenticateWithSignature(signature);
-        await tx.wait(); 
-        
-        showMsg('authMessage','✅ Authentication successful! Access granted.', true);
-        setTimeout(()=>window.location.href='dashboard.html', 1500); 
-        
-      } catch (e) {
-          console.error("Authentication Error:", e);
-          const errorMsg = e.error?.message || e.message || 'Authentication failed. Check console for details.';
-          // Check for common rejection message
-          if (errorMsg.includes('User denied transaction signature')) {
-             showMsg('authMessage', 'Login attempt cancelled by user.', false);
-          } else {
-             showMsg('authMessage', `Authentication Failed: ${errorMsg}`, false);
-          }
+    // --- STEP 4: Send the signature back to the contract for verification ---
+    showMsg('authMessage','Signature confirmed. Sending to blockchain for verification...', true);
+    
+    const tx = await contract.authenticateWithSignature(signature);
+    await tx.wait(); 
+    
+    showMsg('authMessage','✅ Authentication successful! Access granted.', true);
+    setTimeout(()=>window.location.href='dashboard.html', 1500); 
+    
+  } catch (e) {
+      console.error("Authentication Error:", e);
+      const errorMsg = e.error?.message || e.message || 'Authentication failed. Check console for details.';
+      if (errorMsg.includes('User denied transaction signature')) {
+         showMsg('authMessage', 'Login attempt cancelled by user.', false);
+      } else {
+         showMsg('authMessage', `Authentication Failed: ${errorMsg}`, false);
       }
-    }
+  }
+}
     
     async function deactivateAccount(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try { const tx=await contract.deactivateAccount(); showMsg('registerMessage', 'Confirm deactivation in MetaMask...'); await tx.wait(); showMsg('registerMessage','Account deactivated successfully.');} catch(e) { showMsg('registerMessage', e.error?.message || e.message || 'Deactivation failed.', false); }}
     
