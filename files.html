@@ -155,7 +155,6 @@
           Role: <strong id="userRole">Loading...</strong>
       </div>
 
-      <!-- TEACHER TOOLS SECTION -->
       <div id="teacher-tools" style="display: none;">
           <h2>Teacher Tools</h2>
           <button class="btn btn-success" onclick="toggleCreateForm(true)">+ Create New Submission Box</button>
@@ -170,9 +169,7 @@
           </div>
       </div>
       
-      <!-- STUDENT/ALL USERS SECTION -->
       <div id="submission-list">
-          <!-- Submission boxes will be loaded here -->
           <p id="loading-msg">Loading submission boxes...</p>
       </div>
       
@@ -183,12 +180,12 @@
   <script>
     // --- Configuration ---
     
-    // ⚠️ AuthManager Contract Address (Used for Role Check)
+    // ⚠️ AuthManager Contract Address (Used for Role Check) - Consistent with admin.html
     const AUTH_CONTRACT_ADDRESS = "0x8E542b72422D7919c49e21b40f5720A2d77A6C75"; 
     
     // ⚠️ FileRegistry Contract Address (REPLACE WITH YOUR DEPLOYED FILE REGISTRY ADDRESS)
-    // NOTE: You must deploy the new FileRegistry.sol contract and use its address here.
-    const FILE_CONTRACT_ADDRESS = "0x855fdce08698B84A841E363C44a180e0E916aCa6"; // Placeholder
+    // NOTE: You must deploy the new FileRegistry.sol contract and use its unique address here.
+    const FILE_CONTRACT_ADDRESS = "0x855fdce08698B84A841E363C44a180e0E916aCa6"; // Placeholder - REPLACE THIS!
 
     // ABI for AuthManager role check (only need getMyRole)
     const AUTH_ABI = [
@@ -252,6 +249,7 @@
         fileContract = new ethers.Contract(FILE_CONTRACT_ADDRESS, FILE_ABI, signer); 
 
         // 1. Check User Role
+        // NOTE: If AUTH_CONTRACT_ADDRESS is not deployed or incorrect, this will throw an error.
         userRole = await authContract.getMyRole();
         el('userRole').textContent = userRole.charAt(0).toUpperCase() + userRole.slice(1) || 'Student/Unassigned';
 
@@ -297,7 +295,7 @@
             displayStatus('createStatus', 'Creating box on blockchain... Confirm transaction in MetaMask.', 'success', 0);
             
             // Call the real contract function
-            const tx = await fileContract.createBox(title, dueDate); 
+            const tx = await fileContract.createBox(title, dueDate);
             await tx.wait(); 
             
             displayStatus('createStatus', `Box "${title}" created successfully!`, 'success');
@@ -397,7 +395,7 @@
             // to IPFS/Arweave here, get a CID, and send the CID to the contract. 
             // Here, we just send the file name as a simulation of that metadata.
             
-            const tx = await fileContract.submitFile(boxId, fileName); 
+            const tx = await fileContract.submitFile(boxId, fileName);
             await tx.wait(); 
 
             displayStatus(`submit-status-${boxId}`, `File metadata submitted on-chain! Filename: ${fileName}`, 'success');
