@@ -29,6 +29,7 @@
       padding-top: var(--header-height); 
     }
     header {
+      /* --- FIXED HEADER CSS --- */
       position: fixed; 
       top: 0;
       left: 0;
@@ -53,8 +54,8 @@
       gap: 15px;
     }
     .container {
-      padding: 30px 10%; /* NEW: Padding for full width, adjust 10% as needed */
-      margin: 0 auto; /* Removed max-width for full screen */
+      padding: 30px 10%; 
+      margin: 0 auto; 
     }
     .btn {
       font-family: "Poppins", sans-serif;
@@ -83,7 +84,7 @@
     
     /* Public Wall - Use larger max-width for the main content card */
     #public-wall {
-      max-width: 1200px; /* NEW: Increased size */
+      max-width: 1200px; 
       width: 100%;
       margin: 20px auto;
       background: var(--card-bg);
@@ -192,7 +193,7 @@
     /* Post List */
     #postList {
       margin-top: 20px;
-      min-height: 200px; /* Ensure content area exists */
+      min-height: 200px; 
     }
     .post-item {
       border: 1px solid var(--border-color);
@@ -203,7 +204,6 @@
       word-wrap: break-word;
       position: relative; 
     }
-    /* Existing post, comment, and reaction styles */
     .delete-btn {
       position: absolute;
       top: 15px;
@@ -275,6 +275,12 @@
   <header>
     <span>🎓 University Portal</span>
     <div class="header-controls">
+      
+      <!-- NEW BUTTON: Link to the File Submission Portal -->
+      <button class="btn btn-primary" onclick="window.location.href='files.html'" style="background-color: var(--success-color); color: white;">
+        📁 Assignments
+      </button>
+      
       <button class="btn btn-primary" onclick="window.location.href='admin.html'" style="background-color: #ffb300; color: #333;">
         🔐 Admin Panel
       </button>
@@ -296,8 +302,10 @@
       </div>
     </div>
     
+    <!-- Floating Action Button (FAB) -->
     <button id="fabButton" onclick="togglePostComposer(true)">+</button>
     
+    <!-- Post Composer (Now positioned fixed/absolute like a modal) -->
     <div id="postComposer">
         <h3 style="margin-top: 0;">Share Your Update</h3>
         <textarea id="postInput" placeholder="Type your post here..."></textarea>
@@ -308,6 +316,7 @@
         </div>
     </div>
 
+    <!-- The list needs to be outside the main wall card to ensure correct centering -->
     <div id="postList">
       <p id="no-posts">Loading posts...</p>
     </div>
@@ -522,6 +531,7 @@
             <div class="comment-list">
                 ${commentsHtml || '<div class="comment-item" style="color:var(--text-light); text-align: center;">No comments yet.</div>'}
             </div>
+            <!-- Comment Input Form -->
             <div class="comment-composer">
                 <input type="text" id="comment-input-${index}" placeholder="Add a comment..." />
                 <button class="btn btn-primary" onclick="handleComment(${index})">Comment</button>
