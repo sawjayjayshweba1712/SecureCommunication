@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20; // Bumped pragma for OpenZeppelin compatibility
+pragma solidity ^0.8.20; 
 
 // Required for secure signature verification (ecrecover utility)
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v4.9/contracts/utils/cryptography/ECDSA.sol";
@@ -19,7 +19,7 @@ contract AuthManager {
     
     // NEW: Challenge-Response Storage
     mapping(address => bytes32) private challenges; 
-    mapping(address => uint256) private challengeTimestamps; // Optional: To enforce time limit
+    mapping(address => uint256) private challengeTimestamps; 
 
     // --- Events ---
     event Registered(address indexed user);
@@ -46,31 +46,25 @@ contract AuthManager {
     /// @dev Uses keccak256 with block data and user address for entropy.
     /// @return challenge The raw challenge hash (bytes32).
     function getChallenge() external view returns (bytes32 challenge) {
-        address user = tx.origin; // Using tx.origin for simplicity in view call context
+        address user = msg.sender; // FIX: Use msg.sender for reliable wallet context
 
         require(registered[user], "User is not registered.");
         
-        // Generate a challenge based on current block and user address
+        // Generate a challenge based on current block data and user address
+        // NOTE: block.difficulty removed as it can be zero on some testnets
         bytes32 rawChallenge = keccak256(
-            abi.encodePacked(block.timestamp, block.number, block.difficulty, user)
+            abi.encodePacked(block.timestamp, block.number, user)
         );
         
-        // Return the challenge hash. The storage mapping must be updated in a transaction.
         return rawChallenge;
     }
-    
-    // NOTE: In a single-transaction authentication model, the contract would update storage.
-    // Since this is a VIEW function for gas efficiency, the frontend must manually update 
-    // the stored challenge via a separate transaction if needed, but for this demo, 
-    // the CHALLENGE is simply passed back to the frontend to be signed. 
-    // We rely on the frontend to send the challenge back to be verified in verifySignature().
     
     
     // --- Authentication (TRANSACTION - Paid Call) ---
 
     /// @notice Authenticates the user by verifying a signature against a challenge.
     /// @dev This is the final step of the Challenge-Response login flow.
-    /// @param challenge The challenge string the user was presented and signed.
+    /// @param challenge The challenge hash (bytes32) the user was presented and signed.
     /// @param signature The resulting signature from the user's private key.
     function verifySignature(bytes32 challenge, bytes memory signature) external {
         address user = msg.sender;
@@ -88,10 +82,6 @@ contract AuthManager {
 
         // 4. Log Access (Success)
         emit UserAccess(user, block.timestamp);
-        
-        // NOTE: In a full system, you would check challengeTimestamps and clear the challenge.
-        // For this demo, we assume the challenge is fresh since the entire auth 
-        // process is rapid and verified in one paid transaction.
     }
 
     // --- Core Identity Functions ---
@@ -113,12 +103,11 @@ contract AuthManager {
         registered[user] = false;
         delete roles[user];
         delete profileCID[user];
-        delete challenges[user]; // Clear challenge on removal
+        delete challenges[user]; 
         emit UserRemoved(user);
     }
     
     // --- DID Key Rotation Functions ---
-    // (Unchanged from previous update)
 
     function requestKeyRotation(address newWallet) external {
         require(registered[msg.sender], "Must be a registered user to rotate DID key");
@@ -144,13 +133,12 @@ contract AuthManager {
         delete roles[oldWallet];
         delete profileCID[oldWallet];
         delete pendingRotation[oldWallet]; 
-        delete challenges[oldWallet]; // Clear challenge after rotation
+        delete challenges[oldWallet]; 
 
         emit DIDUpdated(oldWallet, newWallet);
     }
     
     // --- Utility & Getter Functions ---
-    // (Authentication functions are now replaced by getChallenge + verifySignature)
 
     function isRegistered(address user) external view returns (bool) {
         return registered[user];
