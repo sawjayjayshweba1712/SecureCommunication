@@ -9,15 +9,18 @@
     body { font-family: Arial, sans-serif; padding: 20px; background:#f7f9fc; }
     .card { max-width:700px; margin:auto; background:#fff; padding:28px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
     h1 { text-align:center; color:#222; }
+    h3 { margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
     .row { margin:12px 0; display:flex; gap:10px; align-items:center; }
-    button { padding:10px 14px; border:0; border-radius:6px; cursor:pointer; }
+    button { padding:10px 14px; border:0; border-radius:6px; cursor:pointer; font-weight: 600; }
     #connectButton { background:#1e88e5; color:#fff; }
     #registerButton { background:#43a047; color:#fff; }
     #authButton { background:#ffb300; color:#222; }
     #deactivateButton { background:#ef5350; color:#fff; }
+    #rotateButton { background:#ff9800; color:#fff; }
     .status { padding:10px; border-radius:6px; margin-bottom:10px; }
     .ok { background:#e8f5e9; color:#1b5e20; border:1px solid #c8e6c9; }
     .err { background:#ffebee; color:#b71c1c; border:1px solid #ffcdd2; }
+    input[type="text"] { width:100%;padding:8px;border-radius:6px;border:1px solid #ccc; box-sizing: border-box;}
   </style>
 </head>
 <body>
@@ -35,7 +38,6 @@
       <button id="disconnectButton" onclick="disconnect()" style="display:none;">Disconnect</button>
     </div>
 
-    <hr />
     <h3>Registration & Authentication</h3>
     <div class="row">
       <button id="registerButton" onclick="registerUser()">Register</button>
@@ -45,7 +47,21 @@
     <div id="registerMessage" class="status" style="display:none;"></div>
     <div id="authMessage" class="status" style="display:none;"></div>
 
-    <hr />
+    <h3>DID Key Rotation</h3>
+    <div>
+      <label>New Wallet Address (Future DID Key):</label>
+      <input id="newWalletAddress" type="text" placeholder="0x..." style="margin-bottom: 10px;">
+      <div class="row">
+        <button id="rotateButton" onclick="updateDID()" style="flex:1;">Rotate DID Key</button>
+      </div>
+      <p style="font-size: 0.85em; color: #555; margin-top: 5px;">
+        Warning: This transfers your registration and all data to the new address.
+        You must confirm this transaction using your *current* wallet.
+      </p>
+      <div id="rotateMessage" class="status" style="display:none; margin-top: 10px;"></div>
+    </div>
+
+
     <h3>Profile</h3>
     <div>
       <label>Profile CID (IPFS) or public pointer</label>
@@ -59,15 +75,16 @@
     // ⚠️ PASTE YOUR *NEW* AuthManager CONTRACT ADDRESS HERE
     const CONTRACT_ADDRESS = "0xE71c11CF485D9ac41f051b20018CF2d2bD1d2ABe";
     
-    // MODIFIED: Added logAccess and UserAccess event
+    // MODIFIED: Added updateDID to the ABI
     const CONTRACT_ABI = [
       "function register() public",
       "function deactivateAccount() public",
       "function authenticate(address user) external view returns (bool)",
       "function setProfileCID(string calldata cid) external",
       "function isRegistered(address user) external view returns (bool)",
-      "function logAccess() external", // NEW function
-      "event UserAccess(address indexed user, uint256 timestamp)" // NEW event
+      "function logAccess() external", 
+      "function updateDID(address newWallet) external", // NEW function
+      "event UserAccess(address indexed user, uint256 timestamp)"
     ];
 
     let provider, signer, contract, currentAccount;
@@ -89,30 +106,24 @@
     
     async function registerUser(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try{const tx=await contract.register();showMsg('registerMessage','Confirm registration in MetaMask...');await tx.wait();showMsg('registerMessage','Registered successfully!');}catch(e){showMsg('registerMessage', e.error?.message || e.message || 'Registration failed.',false);}}
     
-    // MODIFIED: Calls logAccess after successful authentication check
     async function authenticateUser(){
       if(!contract){showMsg('authMessage','Connect wallet first',false);return;}
       
       try {
-        // 1. Check if registered (view call, free)
         const isAuth = await contract.authenticate(currentAccount);
         
         if(isAuth){
-          // 2. If registered, send the logAccess transaction (costs gas)
           showMsg('authMessage','Authenticated! Logging your access...', true);
-          const tx = await contract.logAccess(); // Call the logging function
-          await tx.wait(); // Wait for the logging transaction to be mined
+          const tx = await contract.logAccess(); 
+          await tx.wait(); 
           
-          // 3. Redirect
           showMsg('authMessage','Access logged! Redirecting to dashboard...', true);
-          setTimeout(()=>window.location.href='dashboard.html', 1500); // Redirect after logging
+          setTimeout(()=>window.location.href='dashboard.html', 1500); 
         
         } else {
-          // User is not registered
           showMsg('authMessage','Authentication Failed: User not registered.',false);
         }
       } catch (e) {
-          // Handle errors from authenticate check OR logAccess transaction
           console.error("Authentication or Logging Error:", e);
           showMsg('authMessage', e.error?.message || e.message || 'Authentication or logging failed.', false);
       }
@@ -122,19 +133,47 @@
     
     async function setProfileCid(){if(!contract){showMsg('profileMessage','Connect wallet first',false);return;}const cid=el('profileCid').value.trim();if(!cid){showMsg('profileMessage','Please enter a Profile CID or pointer.',false);return;}try{const tx=await contract.setProfileCID(cid); showMsg('profileMessage', 'Confirm saving profile CID in MetaMask...'); await tx.wait();showMsg('profileMessage','Profile CID saved successfully!');} catch(e) {showMsg('profileMessage', e.error?.message || e.message || 'Failed to save Profile CID.',false);}}
 
+    // NEW: Function to handle DID Key Rotation
+    async function updateDID() {
+      if (!contract) { showMsg('rotateMessage', 'Connect wallet first', false); return; }
+      
+      const newWallet = el('newWalletAddress').value.trim();
+      
+      if (!ethers.utils.isAddress(newWallet)) {
+        showMsg('rotateMessage', 'Please enter a valid Ethereum address for the new wallet.', false);
+        return;
+      }
+
+      if (newWallet.toLowerCase() === currentAccount.toLowerCase()) {
+        showMsg('rotateMessage', 'New wallet address cannot be the same as the current one.', false);
+        return;
+      }
+      
+      try {
+        // The user must sign this transaction with their *current* wallet (msg.sender = old wallet)
+        showMsg('rotateMessage', `Confirm key rotation to ${newWallet} in MetaMask...`, true);
+        const tx = await contract.updateDID(newWallet);
+        await tx.wait();
+        
+        showMsg('rotateMessage', `✅ DID successfully rotated! Your identity is now controlled by ${newWallet}. Please disconnect and reconnect with the new wallet.`, true, 8000);
+        disconnect(); // Force disconnect so user must use the new key next time
+        
+      } catch (e) {
+        console.error("Key Rotation Error:", e);
+        showMsg('rotateMessage', e.error?.message || e.message || 'Key rotation failed. Check console for details.', false);
+      }
+    }
+
     // Add event listeners for MetaMask account/network changes
     if (typeof window.ethereum !== 'undefined') {
         window.ethereum.on('accountsChanged', (accounts) => {
-            // If account changed, disconnect and require re-connect
             if (accounts.length === 0) {
               disconnect();
             } else {
-              // Reload page or re-run connectWallet to update UI
               window.location.reload(); 
             }
         });
         window.ethereum.on('chainChanged', (chainId) => {
-            // Reload page on network change
             window.location.reload();
         });
     }
