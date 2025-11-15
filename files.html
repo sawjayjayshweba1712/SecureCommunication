@@ -126,22 +126,25 @@
 
       try {
         setStatus('Connecting wallet...', true);
-        
-        // --- START FIX ---
-        // 1. Create a default provider (e.g., JsonRpcProvider) using the current network ID
-        const network = await new ethers.providers.Web3Provider(window.ethereum).getNetwork();
-        
-        // 2. Create the provider again, but explicitly tell Ethers what network properties to use,
-        // omitting the ENS support property if necessary.
-        // The simplest way to bypass this in Ethers v5 is to use the raw window.ethereum object
-        // and handle the lack of ENS gracefully, or ensure Ethers is loaded before connecting.
-        
-        // Revert to the standard method, but add the fix for Ethers v5 with Sepolia:
-        provider = new ethers.providers.Web3Provider(window.ethereum, "any"); 
-        // Using "any" prevents Ethers from immediately checking network details including ENS
-        // against its internal list, and delays that check until after the initial setup.
-        
+        provider = new ethers.providers.Web3Provider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        currentAccount = await signer.getAddress();
+        
+        subManagerContract = new ethers.Contract(SUBMISSION_MANAGER_ADDRESS, SUBMISSION_MANAGER_ABI, signer);
+        authManagerContract = new ethers.Contract(AUTH_MANAGER_ADDRESS, AUTH_MANAGER_ABI, provider);
+
+        userRole = await authManagerContract.getRole(currentAccount);
+        if (userRole === "") userRole = "member/student"; 
+        
+        el('roleInfo').innerHTML = `Your Role: <strong>${userRole.toUpperCase()}</strong>`;
+        setStatus(`Connected as ${shortAddr(currentAccount)}`, true);
+        
+        if (userRole === 'admin' || userRole === 'teacher') {
+            el('createBoxSection').style.display = 'block';
+        }
+
+        await loadSubmissionBoxes();
 
       } catch (error) {
         console.error("Initialization error:", error);
