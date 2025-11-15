@@ -1,19 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" /> 
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script> 
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     body { font-family:Arial,sans-serif;background:#f2f6fb;padding:40px; }
     .wrap { max-width:800px;margin:auto;background:#fff;padding:28px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.06); }
-    h1 { margin-bottom:8px; color: #273c75; } 
+    h1 { margin-bottom:8px; color: #273c75; }
     button { padding:10px 14px;border-radius:8px;border:0;background:#1e88e5;color:#fff;cursor:pointer; font-size: 14px; margin-right: 10px;}
     button:hover { background: #1565c0; }
     .field { background:#f8fafc;padding:12px 15px; border-radius:8px; margin-bottom: 12px; border-left: 4px solid #40739e; }
     .field b { color: #273c75; }
-    #addr { font-family: monospace; } 
+    #addr { font-family: monospace; }
   </style>
 </head>
 <body>
@@ -33,11 +33,11 @@
 
   <script>
     // ⚠️ PASTE YOUR *NEW* AuthManager CONTRACT ADDRESS HERE
-    const contractAddress="0x0C04CccB10696083D9D10Da88251a7f512763227";
+    const contractAddress="0x650A73a1356897eB07dC451FD0998C2029C0232A";
     
     // ABI remains the same for view functions used here
     const contractABI=[
-      "function isRegistered(address user) view returns (bool)", 
+      "function isRegistered(address user) view returns (bool)",
       "function getRole(address user) view returns (string memory)",
       "function getProfileCID(address user) view returns (string memory)"
     ];
