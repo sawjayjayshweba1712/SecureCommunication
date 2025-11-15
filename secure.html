@@ -18,14 +18,26 @@
       --danger-color: #c23616;
       --danger-hover: #e84118;
       --shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+      /* Define fixed header height */
+      --header-height: 60px;
     }
     body {
       margin: 0;
       font-family: "Poppins", sans-serif;
       background-color: var(--bg-color);
       color: var(--text-color);
+      /* Add padding equal to header height to prevent content overlap */
+      padding-top: var(--header-height); 
     }
     header {
+      /* --- FIXED HEADER CSS --- */
+      position: fixed; /* Keep header visible during scroll */
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: var(--header-height);
+      z-index: 1000; /* Ensure it stays on top of other content */
+      
       background-color: var(--primary-color);
       color: white;
       padding: 18px 30px;
@@ -36,6 +48,7 @@
       justify-content: space-between;
       align-items: center;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      box-sizing: border-box; /* Include padding in height calculation */
     }
     header .header-controls {
       display: flex;
@@ -297,8 +310,8 @@
 
     // --- BLOCKCHAIN WALL (Ethers v5 with Comments/Reactions) ---
     
-    // ⚠️ PASTE YOUR *NEW RE-DEPLOYED* PublicWall CONTRACT ADDRESS HERE
-    const CONTRACT_ADDRESS = "0xF25AB40f6648CeeDcf1166aC19634DcBBE2B0ac1"; // REPLACE THIS ADDRESS!
+    // ⚠️ NEW RE-DEPLOYED PublicWall CONTRACT ADDRESS
+    const CONTRACT_ADDRESS = "0xF25AB40f6648CeeDcf1166aC19634DcBBE2B0ac1"; 
 
     // MODIFIED: Updated ABI with new functions and events for comments/reactions
     const ABI = [
