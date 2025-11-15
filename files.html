@@ -1,282 +1,556 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Assignments & Submissions</title>
-  <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background:#e8f5e9; color:#222; }
-    .card { max-width:1000px; margin:auto; background:#fff; padding:30px; border-radius:15px; box-shadow:0 8px 25px rgba(0,0,0,0.1); }
-    h1 { text-align:center; color:#1b5e20; }
-    h2 { color:#388e3c; border-bottom:2px solid #e8f5e9; padding-bottom:5px; margin-top:20px; }
-    .status { padding:12px; border-radius:8px; margin-bottom:15px; text-align:center; font-weight: bold; }
-    .ok { background:#e8f5e9; color:#1b5e20; border:1px solid #c8e6c9; }
-    .err { background:#ffebee; color:#b71c1c; border:1px solid #ffcdd2; }
-    .btn { padding:10px 15px; border:0; border-radius:6px; cursor:pointer; font-weight:600; transition: background-color 0.2s ease; }
-    .btn-success { background:#43a047; color:#fff; }
-    .btn-success:hover { background:#2e7d32; }
-    .btn-primary { background:#1e88e5; color:#fff; }
-    .btn-primary:hover { background:#1565c0; }
-    .btn-back { background:#78909c; color:#fff; margin-top:30px; }
-    
-    .submission-box { border: 1px solid #c8e6c9; padding: 15px; margin-bottom: 15px; border-radius: 8px; }
-    .submission-box h3 { color: #333; margin-top: 0; }
-    .submission-box p { font-size: 14px; color: #555; }
-    .upload-area { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
-    .upload-area input[type="file"] { flex-grow: 1; }
-    #createBoxBtn { margin-bottom: 20px; }
-    
-    /* Create Box Modal Styles (Basic) */
-    .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
-    .modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 10px; }
-    .modal-content input, .modal-content textarea { width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure File Submission Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fc; }
+        .card { background-color: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); }
+        .btn-primary { background-color: #273c75; color: white; transition: background-color 0.2s; }
+        .btn-primary:hover { background-color: #1a2c4e; }
+        .btn-secondary { background-color: #f0f4f8; color: #273c75; border: 1px solid #d0d7e0; }
+        .btn-secondary:hover { background-color: #e2e8f0; }
+        .role-tag { padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 0.8rem; }
+        .tag-admin { background-color: #fefcbf; color: #a07a00; }
+        .tag-teacher { background-color: #c3e6cb; color: #1e7e34; }
+        .tag-student { background-color: #cfe2ff; color: #004085; }
+        .submission-item { cursor: pointer; transition: all 0.2s; border-left: 5px solid #273c75; }
+        .submission-item:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); }
+        .modal-overlay { background-color: rgba(0, 0, 0, 0.6); }
+        .progress-bar { height: 8px; border-radius: 4px; transition: width 0.3s; }
+    </style>
 </head>
-<body>
-  <div class="card">
-    <h1>📄 Assignment Submissions</h1>
+<body class="p-4 md:p-8 min-h-screen">
 
-    <div id="status" class="status err">Initializing...</div>
-    <div id="walletInfo" class="ok" style="display:none;">
-        <p>Wallet: <strong id="currentAccount">N/A</strong> | Role: <strong id="userRole">Loading...</strong></p>
-    </div>
-
-    <button id="createBoxBtn" class="btn btn-success" style="display:none;" onclick="openCreateBoxModal()">
-        + Create Submission Box (Admin/Teacher Only)
-    </button>
-    
-    <hr />
-
-    <section id="submissionList">
-        <h2>Available Submissions</h2>
-        <div id="boxesContainer">
-            <p id="loadingMsg">Connecting to contract and loading submissions (requires backend)...</p>
-            </div>
-    </section>
-    
-    <button class="btn btn-back" onclick="window.location.href='secure.html'">← Back to Public Wall</button>
-  </div>
-  
-  <div id="createBoxModal" class="modal">
-    <div class="modal-content">
-      <h2>Create New Submission Box</h2>
-      <input type="text" id="boxTitle" placeholder="Assignment Title (e.g., Final Project Report)">
-      <textarea id="boxDescription" placeholder="Description..."></textarea>
-      <input type="datetime-local" id="boxDeadline" value="2025-12-31T23:59">
-      <input type="text" id="boxFormat" placeholder="File Format Restrictions (e.g., PDF, DOCX)">
-      <input type="number" id="boxMaxSize" placeholder="Max File Size (MB)">
-      <p id="modalStatus" class="err" style="display:none;"></p>
-      <button class="btn btn-primary" onclick="handleCreateSubmissionBox()">Create Box</button>
-      <button class="btn" onclick="closeCreateBoxModal()">Cancel</button>
-    </div>
-  </div>
-
-  <script>
-    // --- Configuration ---
-    // AuthManager Contract Address (Same as index.html/admin.html)
-    const AUTH_CONTRACT_ADDRESS = "0xE71c11CF485D9ac41f051b20018CF2d2bD1d2ABe";
-    const AUTH_ABI = [
-      "function getMyRole() view returns (string memory)", 
-      "function isRegistered(address user) view returns (bool)"
-    ];
-    // NOTE: In a real app, submissions would also use a specific API endpoint/contract.
-    
-    let provider, signer, authContract, currentAccount, userRole;
-
-    function el(id){ return document.getElementById(id); }
-    function showStatus(text, ok=true) {
-      const s = el('status');
-      s.textContent = text;
-      s.className = 'status ' + (ok ? 'ok' : 'err');
-    }
-    
-    function shortAddr(a) {
-      return a ? `${a.slice(0, 6)}...${a.slice(-4)}` : "";
-    }
-    
-    function openCreateBoxModal() {
-        el('createBoxModal').style.display = 'block';
-    }
-    
-    function closeCreateBoxModal() {
-        el('createBoxModal').style.display = 'none';
-        el('modalStatus').style.display = 'none';
-    }
-
-    async function initPage() {
-      if (typeof window.ethereum === "undefined") {
-        showStatus("MetaMask not installed. Please install MetaMask.", false);
-        el('loadingMsg').textContent = "MetaMask not found.";
-        return;
-      }
-
-      try {
-        showStatus('Connecting wallet and verifying role...', true);
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        signer = provider.getSigner();
-        currentAccount = await signer.getAddress();
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        el('currentAccount').textContent = shortAddr(currentAccount);
-        el('walletInfo').style.display = 'block';
+        // Expose Firebase functions globally for use in the main script block
+        window.initializeFirebase = async () => {
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+            
+            if (Object.keys(firebaseConfig).length === 0) {
+                console.error("Firebase config is missing. Cannot initialize Firestore.");
+                return;
+            }
 
-        authContract = new ethers.Contract(AUTH_CONTRACT_ADDRESS, AUTH_ABI, provider); 
-        
-        // 1. Check if user is registered (essential security check)
-        const isRegistered = await authContract.isRegistered(currentAccount);
-        if (!isRegistered) {
-            showStatus("❌ Access Denied. User is not registered.", false);
-            el('loadingMsg').textContent = "Access Denied. Please register your account on the login page.";
-            return;
-        }
+            try {
+                setLogLevel('error');
+                const app = initializeApp(firebaseConfig);
+                const db = getFirestore(app);
+                const auth = getAuth(app);
+                
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
 
-        // 2. Fetch User Role for RBAC
-        userRole = await authContract.getMyRole();
-        el('userRole').textContent = userRole || 'Student (Default)';
+                // Wait for the auth state to settle
+                return new Promise(resolve => {
+                    onAuthStateChanged(auth, (user) => {
+                        window.db = db;
+                        window.auth = auth;
+                        window.Timestamp = Timestamp;
+                        window.firestoreInitialized = true;
+                        window.currentUserId = user ? user.uid : crypto.randomUUID();
+                        window.appId = appId;
+                        console.log("Firestore Initialized. User ID:", window.currentUserId);
+                        resolve({ db, user: user || { uid: window.currentUserId } });
+                    });
+                });
+            } catch (error) {
+                console.error("Firebase initialization failed:", error);
+            }
+        };
 
-        // 3. Implement RBAC: Only Admin or Teacher can see the creation button
-        if (userRole.toLowerCase() === 'admin' || userRole.toLowerCase() === 'teacher') {
-          el('createBoxBtn').style.display = 'inline-block';
-        }
-        
-        showStatus('Wallet Connected. Role Verified.', true);
+        window.dbCollections = {
+            submissionBoxes: (appId) => collection(window.db, `artifacts/${appId}/public/data/submissionBoxes`),
+            fileSubmissions: (appId) => collection(window.db, `artifacts/${appId}/public/data/fileSubmissions`),
+        };
 
-        // 4. Load Submission Boxes (Simulated - Requires a real backend/API)
-        loadSubmissionBoxes(); 
+        window.firestoreOperations = {
+            onSnapshot, doc, query, where, updateDoc, setDoc, addDoc, deleteDoc
+        };
 
-      } catch (error) {
-        console.error("Initialization error:", error);
-        showStatus(`Error: Could not connect or verify. ${error.message}`, false);
-        el('loadingMsg').textContent = "Error during initialization.";
-      }
-    }
-    
-    // --- Backend/API Simulation Functions ---
-    
-    function loadSubmissionBoxes() {
-        // --- NOTE: This function would make a fetch() call to your server ---
-        el('loadingMsg').style.display = 'none'; 
-        const container = el('boxesContainer');
-        container.innerHTML = ''; // Clear loading message
-        
-        // Simulate a response from the Backend API
-        const mockBoxes = [
-            { id: 1, title: "Semester 1 Essay", desc: "A reflective essay on the course topics.", deadline: "2025-12-15 23:59", format: "PDF", maxSize: 10, creator: "0xTeac...h3rA" },
-            { id: 2, title: "Lab Report 3", desc: "Experiment results and analysis.", deadline: "2025-12-01 17:00", format: "DOCX, PDF", maxSize: 5, creator: "0xTeac...h3rB" }
-        ];
+    </script>
 
-        if (mockBoxes.length === 0) {
-            container.innerHTML = '<p>No active submission boxes found.</p>';
-            return;
-        }
-
-        mockBoxes.forEach(box => {
-            const boxEl = document.createElement('div');
-            boxEl.className = 'submission-box';
-            boxEl.innerHTML = `
-                <h3>${box.title}</h3>
-                <p><strong>Deadline:</strong> ${box.deadline} | <strong>Formats:</strong> ${box.format} | <strong>Max Size:</strong> ${box.maxSize} MB</p>
-                <p>${box.desc}</p>
-                <div class="upload-area">
-                    <input type="file" id="file-${box.id}">
-                    <button class="btn btn-primary" onclick="handleFileUpload(${box.id}, '${box.format}', ${box.maxSize})">Submit File</button>
+    <!-- Main Application UI -->
+    <div id="appContainer" class="max-w-4xl mx-auto">
+        <header class="flex justify-between items-center mb-8 pb-4 border-b">
+            <h1 class="text-3xl font-bold text-[#273c75]">Secure Submission Portal</h1>
+            <div class="flex items-center space-x-3">
+                <button onclick="window.location.href='secure.html'" class="px-4 py-2 text-sm font-medium rounded-lg btn-secondary">← Public Wall</button>
+                <div id="userInfo" class="flex items-center space-x-2 card p-2">
+                    <span id="userAddress" class="text-sm font-medium text-gray-700">Connecting...</span>
+                    <span id="userRole" class="role-tag">Loading</span>
                 </div>
-                <p id="upload-status-${box.id}" style="font-size: 12px; margin-top: 5px;"></p>
+            </div>
+        </header>
+
+        <!-- Main Content based on Role -->
+        <main class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div id="adminTeacherPanel" class="col-span-1" style="display:none;">
+                <div class="card p-5 mb-6">
+                    <h2 class="text-xl font-bold mb-3 text-[#1e88e5]">Teacher/Admin Tools</h2>
+                    <button id="createBoxBtn" onclick="toggleSubmissionBoxModal(true)" class="w-full px-4 py-3 text-lg rounded-lg btn-primary flex items-center justify-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                        Create Submission Box
+                    </button>
+                </div>
+                <!-- Future: View Submissions functionality here -->
+            </div>
+
+            <div id="studentPanel" class="md:col-span-3">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Available Assignments</h2>
+                <div id="submissionBoxesList" class="space-y-4">
+                    <p class="text-gray-500">Awaiting connection and loading submission boxes...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Submission Box Creation Modal (Teacher/Admin) -->
+    <div id="submissionBoxModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay hidden">
+        <div class="card w-full max-w-lg p-6">
+            <h3 class="text-2xl font-bold mb-5 text-[#273c75]">Create New Submission Box</h3>
+            
+            <label class="block mb-3">
+                <span class="text-gray-700 font-medium">Title:</span>
+                <input type="text" id="boxTitle" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" placeholder="e.g., Final Project Report">
+            </label>
+
+            <label class="block mb-3">
+                <span class="text-gray-700 font-medium">Description:</span>
+                <textarea id="boxDescription" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" placeholder="Outline of submission requirements..."></textarea>
+            </label>
+
+            <div class="grid grid-cols-2 gap-4">
+                <label class="block mb-3">
+                    <span class="text-gray-700 font-medium">Deadline:</span>
+                    <input type="date" id="boxDeadline" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                </label>
+                <label class="block mb-3">
+                    <span class="text-gray-700 font-medium">Max File Size (MB):</span>
+                    <input type="number" id="boxMaxSize" value="5" min="1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                </label>
+            </div>
+            
+            <label class="block mb-5">
+                <span class="text-gray-700 font-medium">Allowed Extensions (comma-separated):</span>
+                <input type="text" id="boxFileTypes" value="pdf,docx,zip" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+            </label>
+
+            <div id="boxCreationMessage" class="hidden p-3 rounded-lg text-sm mb-4"></div>
+
+            <div class="flex justify-end space-x-3">
+                <button class="px-4 py-2 rounded-lg btn-secondary" onclick="toggleSubmissionBoxModal(false)">Cancel</button>
+                <button id="saveBoxBtn" class="px-4 py-2 rounded-lg btn-primary" onclick="createSubmissionBox()">Create Box</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Upload Modal -->
+    <div id="uploadModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay hidden">
+        <div class="card w-full max-w-lg p-6">
+            <h3 id="uploadModalTitle" class="text-2xl font-bold mb-3 text-[#273c75]">Upload File</h3>
+            <p id="uploadModalDetails" class="text-sm text-gray-600 mb-4"></p>
+
+            <label class="block mb-5">
+                <span class="text-gray-700 font-medium">Select File:</span>
+                <input type="file" id="fileInput" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+            </label>
+
+            <div id="uploadProgressContainer" class="mb-4 hidden">
+                <p class="text-sm text-gray-700 mb-1">Upload Progress: <span id="uploadPercentage">0%</span></p>
+                <div class="w-full bg-gray-200 rounded-full">
+                    <div id="uploadProgressBar" class="bg-[#43a047] progress-bar" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <div id="uploadMessage" class="hidden p-3 rounded-lg text-sm mb-4"></div>
+
+            <div class="flex justify-end space-x-3">
+                <button class="px-4 py-2 rounded-lg btn-secondary" onclick="toggleUploadModal(false)">Close</button>
+                <button id="submitFileBtn" class="px-4 py-2 rounded-lg btn-primary" onclick="handleFileUpload()">Submit File</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- GLOBAL & FIREBASE SETUP ---
+        const CONTRACT_ADDRESS = "0xE71c11CF485D9ac41f051b20018CF2d2bD1d2ABe"; // AuthManager address from your project
+        const CONTRACT_ABI = ["function getMyRole() view returns (string memory)"];
+        let provider, contract, currentAccount, userRole;
+
+        // Global Firebase variables will be populated after initialization
+        let db, appId, currentUserId;
+        const subBoxesCol = () => window.firestoreOperations.query(window.dbCollections.submissionBoxes(window.appId));
+        const fileSubmissionsCol = () => window.dbCollections.fileSubmissions(window.appId);
+        
+        // UI elements
+        const ui = {
+            userInfo: document.getElementById('userInfo'),
+            userAddress: document.getElementById('userAddress'),
+            userRole: document.getElementById('userRole'),
+            adminTeacherPanel: document.getElementById('adminTeacherPanel'),
+            studentPanel: document.getElementById('studentPanel'),
+            submissionBoxesList: document.getElementById('submissionBoxesList'),
+            submissionBoxModal: document.getElementById('submissionBoxModal'),
+            uploadModal: document.getElementById('uploadModal'),
+            boxCreationMessage: document.getElementById('boxCreationMessage'),
+            uploadMessage: document.getElementById('uploadMessage'),
+            uploadProgressBar: document.getElementById('uploadProgressBar'),
+            uploadProgressContainer: document.getElementById('uploadProgressContainer'),
+            uploadPercentage: document.getElementById('uploadPercentage'),
+            fileInput: document.getElementById('fileInput')
+        };
+
+        let currentSubmissionBox = null; // Stores the box a student is currently uploading to
+
+        // --- UTILITY FUNCTIONS ---
+        function shortAddr(a) { return a ? `${a.slice(0, 6)}...${a.slice(-4)}` : "N/A"; }
+        function isTeacherOrAdmin(role) { return role === 'teacher' || role === 'admin'; }
+        function formatMessage(el, message, isSuccess) {
+            el.textContent = message;
+            el.className = isSuccess ? 'block p-3 rounded-lg text-sm mb-4 bg-green-100 text-green-700' : 'block p-3 rounded-lg text-sm mb-4 bg-red-100 text-red-700';
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 5000);
+        }
+        function getRoleTagClass(role) {
+            if (role === 'admin') return 'tag-admin';
+            if (role === 'teacher') return 'tag-teacher';
+            return 'tag-student';
+        }
+        function getDaysRemaining(deadline) {
+            const now = new Date();
+            const due = new Date(deadline);
+            const diffTime = due.getTime() - now.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays;
+        }
+
+        // --- CORE INITIALIZATION ---
+
+        async function init() {
+            ui.userAddress.textContent = "Connecting wallet...";
+            
+            // 1. Initialize Firebase and get current user ID
+            const firebaseResult = await window.initializeFirebase();
+            if (!firebaseResult) return;
+            db = firebaseResult.db;
+            currentUserId = window.currentUserId;
+            appId = window.appId;
+            
+            // 2. Initialize Ethers and get Role from AuthManager
+            if (typeof window.ethereum === "undefined") {
+                 ui.userAddress.textContent = "MetaMask Not Found.";
+                 ui.userRole.textContent = "Disconnected";
+                 return;
+            }
+
+            try {
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                await provider.send("eth_requestAccounts", []);
+                const signer = provider.getSigner();
+                currentAccount = await signer.getAddress();
+                
+                // Get role from your existing AuthManager contract (read-only call)
+                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+                userRole = await contract.getMyRole();
+                userRole = userRole.toLowerCase() || 'student'; // Default to student if no role set
+                
+                // 3. Update UI based on authenticated user and role
+                updateUIForRole();
+
+                // 4. Start listening to Submission Boxes
+                listenForSubmissionBoxes();
+
+            } catch (error) {
+                console.error("MetaMask/Contract connection failed:", error);
+                ui.userAddress.textContent = "Connection Error";
+                ui.userRole.textContent = "Error";
+                alert("Could not connect to MetaMask or read contract role. Please ensure wallet is connected.");
+            }
+        }
+
+        function updateUIForRole() {
+            ui.userAddress.textContent = shortAddr(currentAccount);
+            ui.userRole.textContent = userRole.toUpperCase();
+            ui.userRole.className = `role-tag ${getRoleTagClass(userRole)}`;
+
+            // Show/Hide Admin/Teacher panel
+            if (isTeacherOrAdmin(userRole)) {
+                ui.adminTeacherPanel.style.display = 'block';
+                ui.studentPanel.className = "md:col-span-2"; // Adjust width
+            } else {
+                ui.adminTeacherPanel.style.display = 'none';
+                ui.studentPanel.className = "md:col-span-3";
+            }
+        }
+
+
+        // --- SUBMISSION BOX CREATION (Teacher/Admin Only) ---
+
+        function toggleSubmissionBoxModal(show) {
+            if (!isTeacherOrAdmin(userRole) && show) {
+                alert("Permission Denied: Only Teachers and Admins can create submission boxes.");
+                return;
+            }
+            if (show) {
+                ui.submissionBoxModal.classList.remove('hidden');
+                document.getElementById('boxTitle').value = '';
+                document.getElementById('boxDescription').value = '';
+                document.getElementById('boxDeadline').value = '';
+                document.getElementById('boxCreationMessage').style.display = 'none';
+            } else {
+                ui.submissionBoxModal.classList.add('hidden');
+            }
+        }
+
+        async function createSubmissionBox() {
+            const title = document.getElementById('boxTitle').value.trim();
+            const description = document.getElementById('boxDescription').value.trim();
+            const deadlineDate = document.getElementById('boxDeadline').value;
+            const maxSize = parseInt(document.getElementById('boxMaxSize').value);
+            const fileTypes = document.getElementById('boxFileTypes').value.trim().toLowerCase().split(',').map(t => t.trim()).filter(t => t.length > 0);
+            
+            if (!title || !description || !deadlineDate || !maxSize || fileTypes.length === 0) {
+                formatMessage(ui.boxCreationMessage, "Please fill in all required fields.", false);
+                return;
+            }
+
+            if (new Date(deadlineDate).getTime() < Date.now()) {
+                 formatMessage(ui.boxCreationMessage, "Deadline must be in the future.", false);
+                 return;
+            }
+            
+            try {
+                document.getElementById('saveBoxBtn').textContent = "Creating...";
+                document.getElementById('saveBoxBtn').disabled = true;
+
+                const newBox = {
+                    title,
+                    description,
+                    deadline: window.Timestamp.fromDate(new Date(deadlineDate)),
+                    maxSizeMB: maxSize,
+                    allowedFileTypes: fileTypes,
+                    creatorAddress: currentAccount,
+                    creatorRole: userRole,
+                    createdAt: window.Timestamp.now()
+                };
+
+                await window.firestoreOperations.addDoc(window.dbCollections.submissionBoxes(appId), newBox);
+
+                formatMessage(ui.boxCreationMessage, `Submission box "${title}" created successfully!`, true);
+                setTimeout(() => toggleSubmissionBoxModal(false), 1500);
+
+            } catch (e) {
+                console.error("Error creating submission box:", e);
+                formatMessage(ui.boxCreationMessage, "Failed to create box. See console for details.", false);
+            } finally {
+                document.getElementById('saveBoxBtn').textContent = "Create Box";
+                document.getElementById('saveBoxBtn').disabled = false;
+            }
+        }
+
+
+        // --- SUBMISSION BOX LISTENER & RENDERING ---
+
+        function listenForSubmissionBoxes() {
+            const q = window.firestoreOperations.query(window.dbCollections.submissionBoxes(appId), 
+                                                window.firestoreOperations.where('deadline', '>=', window.Timestamp.now())); // Only show active boxes
+            
+            window.firestoreOperations.onSnapshot(q, (snapshot) => {
+                ui.submissionBoxesList.innerHTML = '';
+                if (snapshot.empty) {
+                    ui.submissionBoxesList.innerHTML = `<p class="text-gray-500 p-4 border rounded-lg bg-yellow-50 border-yellow-200">No active submission boxes found. Check back later!</p>`;
+                    return;
+                }
+
+                snapshot.forEach(doc => {
+                    const box = { id: doc.id, ...doc.data() };
+                    renderSubmissionBox(box);
+                });
+            }, (error) => {
+                console.error("Error listening to submission boxes:", error);
+                ui.submissionBoxesList.innerHTML = `<p class="text-red-500 p-4 border rounded-lg bg-red-50 border-red-200">Error loading assignments: ${error.message}</p>`;
+            });
+        }
+
+        function renderSubmissionBox(box) {
+            const daysRemaining = getDaysRemaining(box.deadline.toDate());
+            const deadlineText = box.deadline.toDate().toLocaleString();
+            const expired = daysRemaining < 0;
+
+            const boxEl = document.createElement('div');
+            boxEl.id = `box-${box.id}`;
+            boxEl.className = `submission-item card p-5 flex justify-between items-start ${expired ? 'opacity-50' : ''}`;
+            boxEl.onclick = () => showUploadModal(box);
+
+            boxEl.innerHTML = `
+                <div>
+                    <h3 class="text-xl font-semibold mb-1 text-[#273c75]">${box.title}</h3>
+                    <p class="text-sm text-gray-600 mb-2">${box.description}</p>
+                    <div class="text-xs text-gray-500 mt-3 space-y-1">
+                        <p><strong>Creator:</strong> ${shortAddr(box.creatorAddress)} (${box.creatorRole})</p>
+                        <p><strong>Deadline:</strong> ${deadlineText} (${expired ? 'Expired' : `${daysRemaining} days left`})</p>
+                        <p><strong>Restrictions:</strong> Max ${box.maxSizeMB}MB, Types: ${box.allowedFileTypes.join(', ')}</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold ${expired ? 'bg-red-500 text-white' : 'bg-[#43a047] text-white'}">
+                        ${expired ? 'CLOSED' : 'SUBMIT'}
+                    </span>
+                </div>
             `;
-            container.appendChild(boxEl);
-        });
-    }
 
-    async function handleCreateSubmissionBox() {
-        // --- NOTE: This function would make a POST fetch() call to your server ---
-        const title = el('boxTitle').value.trim();
-        const desc = el('boxDescription').value.trim();
-        const deadline = el('boxDeadline').value;
-        const format = el('boxFormat').value.trim();
-        const maxSize = el('boxMaxSize').value;
-        
-        if (!title || !desc || !deadline || !format || !maxSize) {
-            el('modalStatus').textContent = "All fields must be filled.";
-            el('modalStatus').style.display = 'block';
-            return;
-        }
-        
-        // Simulate API call success
-        console.log("Simulating creation of new box:", { title, desc, deadline, format, maxSize, creator: currentAccount });
-        el('modalStatus').className = 'ok';
-        el('modalStatus').textContent = `Submission Box "${title}" successfully created! (Simulated)`;
-        el('modalStatus').style.display = 'block';
-        
-        // In a real app, you would:
-        // 1. fetch('POST /submissionbox', { body: JSON.stringify({...}) })
-        // 2. Wait for confirmation.
-        // 3. Close modal and refresh list:
-        setTimeout(() => {
-            closeCreateBoxModal();
-            loadSubmissionBoxes(); // Refresh the list
-        }, 2000);
-    }
-    
-    async function handleFileUpload(boxId, allowedFormats, maxSizeBytes) {
-        // --- NOTE: This function would make a file upload fetch() call to your server ---
-        const fileInput = el(`file-${boxId}`);
-        const statusEl = el(`upload-status-${boxId}`);
-        const file = fileInput.files[0];
+            ui.submissionBoxesList.appendChild(boxEl);
 
-        if (!file) {
-            statusEl.textContent = "Please select a file first.";
-            statusEl.style.color = 'red';
-            return;
+            if (expired) {
+                boxEl.onclick = () => formatMessage(ui.submissionBoxesList.querySelector(`#box-${box.id} + .upload-status`) || document.createElement('div'), "Submission deadline has passed.", false);
+            }
         }
 
-        // 1. File Validation
-        const fileName = file.name;
-        const fileExtension = fileName.split('.').pop().toUpperCase();
-        const formatsArray = allowedFormats.split(',').map(f => f.trim().toUpperCase());
-        const maxBytes = maxSizeBytes * 1024 * 1024; // MB to Bytes
 
-        if (!formatsArray.includes(fileExtension)) {
-            statusEl.textContent = `❌ Invalid format. Must be one of: ${allowedFormats}.`;
-            statusEl.style.color = 'red';
-            return;
+        // --- FILE UPLOAD LOGIC (Student/All) ---
+
+        function showUploadModal(box) {
+            if (isTeacherOrAdmin(userRole)) {
+                 alert("Teachers/Admins cannot submit files (viewing submission logic would go here).");
+                 return;
+            }
+
+            const daysRemaining = getDaysRemaining(box.deadline.toDate());
+            if (daysRemaining < 0) {
+                alert("Submission deadline has passed. Cannot upload.");
+                return;
+            }
+
+            currentSubmissionBox = box;
+            document.getElementById('uploadModalTitle').textContent = `Upload for: ${box.title}`;
+            document.getElementById('uploadModalDetails').innerHTML = `**Deadline:** ${box.deadline.toDate().toLocaleString()}. **Restrictions:** Max ${box.maxSizeMB}MB, Types: ${box.allowedFileTypes.join(', ')}.`;
+            ui.uploadModal.classList.remove('hidden');
+            ui.uploadProgressContainer.classList.add('hidden');
+            ui.uploadMessage.style.display = 'none';
+            ui.fileInput.value = ''; // Clear file input
         }
 
-        if (file.size > maxBytes) {
-            statusEl.textContent = `❌ File size (${(file.size / (1024 * 1024)).toFixed(2)}MB) exceeds limit of ${maxSizeBytes}MB.`;
-            statusEl.style.color = 'red';
-            return;
+        function toggleUploadModal(show) {
+            if (show) {
+                ui.uploadModal.classList.remove('hidden');
+            } else {
+                ui.uploadModal.classList.add('hidden');
+                currentSubmissionBox = null;
+            }
         }
-        
-        // 2. Upload Simulation
-        statusEl.textContent = "Uploading file... (Simulated)";
-        statusEl.style.color = 'orange';
 
-        // In a real app, this is where you'd use FormData and fetch to upload:
-        // const formData = new FormData();
-        // formData.append('submission_file', file);
-        // formData.append('boxId', boxId);
-        // await fetch(`/upload/${boxId}`, { method: 'POST', body: formData });
-        
-        // Simulate success and notification logic
-        setTimeout(() => {
-            statusEl.textContent = `✅ File submitted successfully for Box ${boxId}!`;
-            statusEl.style.color = 'green';
-            // Trigger Notification Logic:
-            // 1. Notify Student (User): Success message.
-            // 2. Notify Admins/Teachers (via email/websocket from the backend)
-            console.log(`[Notification] Student ${currentAccount} submitted file to box ${boxId}.`);
+        async function handleFileUpload() {
+            if (!currentSubmissionBox) return;
+            const file = ui.fileInput.files[0];
+            if (!file) {
+                formatMessage(ui.uploadMessage, "Please select a file to upload.", false);
+                return;
+            }
+            
+            // --- 1. Client-Side Validation ---
+            const maxSizeBytes = currentSubmissionBox.maxSizeMB * 1024 * 1024;
+            if (file.size > maxSizeBytes) {
+                formatMessage(ui.uploadMessage, `File is too large. Max size is ${currentSubmissionBox.maxSizeMB}MB.`, false);
+                return;
+            }
 
-            fileInput.value = ''; // Clear file input
-        }, 3000);
-    }
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            if (!currentSubmissionBox.allowedFileTypes.includes(fileExtension)) {
+                 formatMessage(ui.uploadMessage, `File type .${fileExtension} is not allowed. Allowed types: ${currentSubmissionBox.allowedFileTypes.join(', ')}`, false);
+                 return;
+            }
+            
+            // --- 2. Simulation & UI Update ---
+            document.getElementById('submitFileBtn').disabled = true;
+            ui.uploadProgressContainer.classList.remove('hidden');
+            formatMessage(ui.uploadMessage, "Uploading, scanning, and generating file ID...", true);
+            
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.floor(Math.random() * 15) + 5;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                }
+                ui.uploadPercentage.textContent = `${progress}%`;
+                ui.uploadProgressBar.style.width = `${progress}%`;
+            }, 300);
 
-    window.onload = initPage;
+            // --- 3. Simulated File Storage & ID Generation ---
+            await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate upload time
 
-    if (typeof window.ethereum !== 'undefined') {
-      window.ethereum.on('accountsChanged', () => window.location.reload());
-      window.ethereum.on('chainChanged', () => window.location.reload());
-    }
-  </script>
+            // Simulated Security Check
+            const isMalwareFree = Math.random() > 0.1; // 90% success rate
+            
+            if (!isMalwareFree) {
+                clearInterval(interval);
+                ui.uploadPercentage.textContent = `100%`;
+                ui.uploadProgressBar.style.width = `100%`;
+                formatMessage(ui.uploadMessage, "File scan failed: Malware detected. Upload aborted.", false);
+                document.getElementById('submitFileBtn').disabled = false;
+                return;
+            }
+
+            // Simulated File ID/CID/URL
+            const fileUrl = `ipfs://${currentSubmissionBox.id}-${currentUserId}-${Date.now()}.file`; 
+
+            // --- 4. Store Submission Metadata in Firestore ---
+            try {
+                const submissionData = {
+                    boxId: currentSubmissionBox.id,
+                    studentId: currentUserId,
+                    studentAddress: currentAccount,
+                    fileName: file.name,
+                    fileSize: file.size,
+                    fileUrl: fileUrl, // Pointer to file content
+                    timestamp: window.Timestamp.now(),
+                    status: 'Submitted'
+                };
+                
+                // Add the submission metadata to the fileSubmissions collection
+                await window.firestoreOperations.addDoc(fileSubmissionsCol(), submissionData);
+                
+                clearInterval(interval);
+                formatMessage(ui.uploadMessage, "✅ Upload successful and verified! Your file pointer is saved.", true);
+                
+                // Close modal after success
+                setTimeout(() => toggleUploadModal(false), 2500);
+
+            } catch (e) {
+                console.error("Error saving submission metadata:", e);
+                formatMessage(ui.uploadMessage, "Upload failed: Could not save metadata to database.", false);
+            } finally {
+                document.getElementById('submitFileBtn').disabled = false;
+            }
+        }
+
+
+        // --- EVENT LISTENERS & FINAL SETUP ---
+
+        window.onload = init;
+
+        if (typeof window.ethereum !== 'undefined') {
+            window.ethereum.on('accountsChanged', () => window.location.reload());
+            window.ethereum.on('chainChanged', () => window.location.reload());
+        }
+
+    </script>
 </body>
 </html>
