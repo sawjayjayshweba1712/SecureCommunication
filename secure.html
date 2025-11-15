@@ -381,7 +381,20 @@
         return;
       }
       
-      provider = new ethers.providers.Web3Provider(window.ethereum);
+      // --- ENS FIX APPLIED HERE ---
+      // FIX: Use "any" network argument to prevent Ethers v5 from immediately failing 
+      // on Sepolia's missing ENS resolver configuration.
+      try {
+        // We create the provider here to ensure the connection attempt is successful 
+        // without the ENS lookup prematurely failing.
+        provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+      } catch (e) {
+        console.error("Provider creation failed:", e);
+        if(noPosts) noPosts.textContent = "Error setting up provider. Ensure MetaMask is ready.";
+        return;
+      }
+      // --- END FIX ---
+
       connectButton.onclick = connectWallet;
       
       try {
@@ -398,6 +411,8 @@
     }
 
     async function connectWallet() {
+      if (!provider) return; // Should be initialized in init()
+
       try {
         await provider.send("eth_requestAccounts", []);
         signer = provider.getSigner();
