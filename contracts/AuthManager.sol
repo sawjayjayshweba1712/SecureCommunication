@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 contract AuthManager {
     address public owner;
-    // Core Identity Mappings
+    // Core Identity Mappings 
     mapping(address => bool) private registered;
     mapping(address => string) private roles;
     mapping(address => string) private profileCID; 
