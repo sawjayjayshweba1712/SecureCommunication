@@ -72,19 +72,22 @@
   </div>
 
   <script>
-    // ⚠️ PASTE YOUR *NEW* AuthManager CONTRACT ADDRESS HERE
-    const CONTRACT_ADDRESS = "0x650A73a1356897eB07dC451FD0998C2029C0232A";
+
+    const CONTRACT_ADDRESS = "0xD7e9b05CF39d7EB144AfE5b28206Eb196130e8e9";
     
-    // MODIFIED: Added updateDID to the ABI
+    // MODIFIED ABI: Removed old 'authenticate' and 'logAccess', added new secure functions
     const CONTRACT_ABI = [
       "function register() public",
       "function deactivateAccount() public",
-      "function authenticate(address user) external view returns (bool)",
       "function setProfileCID(string calldata cid) external",
       "function isRegistered(address user) external view returns (bool)",
-      "function logAccess() external", 
-      "function updateDID(address newWallet) external", // NEW function
-      "event UserAccess(address indexed user, uint256 timestamp)"
+      "function updateDID(address newWallet) external", 
+      
+      // NEW FUNCTIONS FOR SECURE AUTH (Challenge-Response)
+      "function getNonce(address user) external view returns (uint256)", 
+      "function authenticateWithSignature(bytes calldata signature) external", 
+      "event UserAccess(address indexed user, uint256 timestamp)",
+      "event Authenticated(address indexed user, uint256 timestamp, uint256 nonce)" // New event for login success
     ];
 
     let provider, signer, contract, currentAccount;
@@ -106,26 +109,42 @@
     
     async function registerUser(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try{const tx=await contract.register();showMsg('registerMessage','Confirm registration in MetaMask...');await tx.wait();showMsg('registerMessage','Registered successfully!');}catch(e){showMsg('registerMessage', e.error?.message || e.message || 'Registration failed.',false);}}
     
+    // NEW SECURE AUTHENTICATION FUNCTION (Challenge-Response)
     async function authenticateUser(){
       if(!contract){showMsg('authMessage','Connect wallet first',false);return;}
       
       try {
-        const isAuth = await contract.authenticate(currentAccount);
+        // --- STEP 1: Get the current nonce/challenge from the contract ---
+        const nonceBigNum = await contract.getNonce(currentAccount);
+        const nonce = nonceBigNum.toNumber();
+
+        // --- STEP 2: Create the challenge message (MUST MATCH THE CONTRACT EXACTLY) ---
+        // Contract hashes: "UniversityPortalLogin:" + nonce
+        const challengeMessage = `UniversityPortalLogin:${nonce}`;
         
-        if(isAuth){
-          showMsg('authMessage','Authenticated! Logging your access...', true);
-          const tx = await contract.logAccess(); 
-          await tx.wait(); 
-          
-          showMsg('authMessage','Access logged! Redirecting to dashboard...', true);
-          setTimeout(()=>window.location.href='dashboard.html', 1500); 
+        // --- STEP 3: Sign the message with the current wallet (MetaMask prompt) ---
+        showMsg('authMessage',`Confirm the login signature in MetaMask. Challenge: ${challengeMessage}`, true);
+        // Ethers' signer.signMessage handles the EIP-191 prefixing.
+        const signature = await signer.signMessage(challengeMessage); 
+
+        // --- STEP 4: Send the signature back to the contract for verification ---
+        showMsg('authMessage','Signature confirmed. Sending to blockchain for verification...', true);
         
-        } else {
-          showMsg('authMessage','Authentication Failed: User not registered.',false);
-        }
+        const tx = await contract.authenticateWithSignature(signature);
+        await tx.wait(); 
+        
+        showMsg('authMessage','✅ Authentication successful! Access granted.', true);
+        setTimeout(()=>window.location.href='dashboard.html', 1500); 
+        
       } catch (e) {
-          console.error("Authentication or Logging Error:", e);
-          showMsg('authMessage', e.error?.message || e.message || 'Authentication or logging failed.', false);
+          console.error("Authentication Error:", e);
+          const errorMsg = e.error?.message || e.message || 'Authentication failed. Check console for details.';
+          // Check for common rejection message
+          if (errorMsg.includes('User denied transaction signature')) {
+             showMsg('authMessage', 'Login attempt cancelled by user.', false);
+          } else {
+             showMsg('authMessage', `Authentication Failed: ${errorMsg}`, false);
+          }
       }
     }
     
@@ -133,7 +152,6 @@
     
     async function setProfileCid(){if(!contract){showMsg('profileMessage','Connect wallet first',false);return;}const cid=el('profileCid').value.trim();if(!cid){showMsg('profileMessage','Please enter a Profile CID or pointer.',false);return;}try{const tx=await contract.setProfileCID(cid); showMsg('profileMessage', 'Confirm saving profile CID in MetaMask...'); await tx.wait();showMsg('profileMessage','Profile CID saved successfully!');} catch(e) {showMsg('profileMessage', e.error?.message || e.message || 'Failed to save Profile CID.',false);}}
 
-    // NEW: Function to handle DID Key Rotation
     async function updateDID() {
       if (!contract) { showMsg('rotateMessage', 'Connect wallet first', false); return; }
       
@@ -150,13 +168,12 @@
       }
       
       try {
-        // The user must sign this transaction with their *current* wallet (msg.sender = old wallet)
         showMsg('rotateMessage', `Confirm key rotation to ${newWallet} in MetaMask...`, true);
         const tx = await contract.updateDID(newWallet);
         await tx.wait();
         
         showMsg('rotateMessage', `✅ DID successfully rotated! Your identity is now controlled by ${newWallet}. Please disconnect and reconnect with the new wallet.`, true, 8000);
-        disconnect(); // Force disconnect so user must use the new key next time
+        disconnect(); 
         
       } catch (e) {
         console.error("Key Rotation Error:", e);
@@ -164,7 +181,6 @@
       }
     }
 
-    // Add event listeners for MetaMask account/network changes
     if (typeof window.ethereum !== 'undefined') {
         window.ethereum.on('accountsChanged', (accounts) => {
             if (accounts.length === 0) {
