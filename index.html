@@ -77,22 +77,14 @@
     
     // MODIFIED: Added updateDID to the ABI
     const CONTRACT_ABI = [
-const CONTRACT_ABI = [
-  "function register() public",
-  "function deactivateAccount() public",
-  "function authenticate(address user) external view returns (bool)",
-  "function setProfileCID(string calldata cid) external",
-  "function isRegistered(address user) external view returns (bool)",
-  "function logAccess() external", 
-  "function updateDID(address newWallet) external",
-
-  // ✅ Add Challenge-Response functions
-  "function getChallenge() external returns (bytes32)",
-  "function verifySignature(bytes32 challenge, bytes signature) external",
-
-  "event UserAccess(address indexed user, uint256 timestamp)"
-];
-
+      "function register() public",
+      "function deactivateAccount() public",
+      "function authenticate(address user) external view returns (bool)",
+      "function setProfileCID(string calldata cid) external",
+      "function isRegistered(address user) external view returns (bool)",
+      "function logAccess() external", 
+      "function updateDID(address newWallet) external", // NEW function
+      "event UserAccess(address indexed user, uint256 timestamp)"
     ];
 
     let provider, signer, contract, currentAccount;
