@@ -1,674 +1,211 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" /> 
-  <title>University Public Wall</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Blockchain Auth - Home</title>
   <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
-    :root {
-      --primary-color: #273c75;
-      --primary-hover: #40739e;
-      --bg-color: #f4f6fb;
-      --card-bg: #ffffff;
-      --text-color: #2f3640;
-      --text-light: #7f8fa6;
-      --border-color: #dfe4ea;
-      --success-color: #43a047;
-      --danger-color: #c23616;
-      --danger-hover: #e84118;
-      --shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
-      --header-height: 60px;
-    }
-    body {
-      margin: 0;
-      font-family: "Poppins", sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-color);
-      padding-top: var(--header-height); 
-    }
-    header {
-      position: fixed; 
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: var(--header-height);
-      z-index: 1000; 
-      background-color: var(--primary-color);
-      color: white;
-      padding: 18px 30px;
-      font-size: 22px;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      box-sizing: border-box; 
-    }
-    header .header-controls {
-      display: flex;
-      gap: 15px;
-    }
-    .container {
-      padding: 30px 10%; 
-      margin: 0 auto; 
-    }
-    .btn {
-      font-family: "Poppins", sans-serif;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 500;
-      transition: all 0.2s ease;
-    }
-    .btn-primary {
-      background-color: var(--primary-color);
-      color: white;
-    }
-    .btn-primary:hover {
-      background-color: var(--primary-hover);
-    }
-    .btn-danger {
-      background-color: var(--danger-color);
-      color: white;
-    }
-    .btn-danger:hover {
-      background-color: var(--danger-hover);
-    }
-    
-    #public-wall {
-      max-width: 1200px; 
-      width: 100%;
-      margin: 20px auto;
-      background: var(--card-bg);
-      border-radius: 15px;
-      padding: 30px;
-      box-shadow: var(--shadow);
-    }
-    #public-wall h2 {
-      color: var(--primary-color);
-      font-size: 24px;
-      margin-top: 0;
-      margin-bottom: 20px;
-      border-bottom: 2px solid var(--border-color);
-      padding-bottom: 10px;
-    }
-
-    /* Wallet Area */
-    #wallet-info {
-      background-color: var(--bg-color);
-      padding: 15px 20px;
-      border-radius: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 25px;
-    }
-    #wallet-info span {
-      font-size: 14px;
-      color: var(--text-light);
-    }
-    #wallet-info strong {
-      font-size: 16px;
-      color: var(--text-color);
-      font-weight: 600;
-      margin-left: 8px;
-    }
-
-    /* Post Composer - Now a modal-like structure */
-    #postComposer {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 90%;
-      max-width: 600px;
-      background: var(--card-bg);
-      border-radius: 15px;
-      padding: 25px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-      z-index: 1010;
-      display: none; /* Hide by default */
-    }
-    #postComposer textarea {
-      width: 100%;
-      height: 150px;
-      padding: 12px;
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      outline: none;
-      font-size: 15px;
-      font-family: "Poppins", sans-serif;
-      box-sizing: border-box;
-      resize: vertical;
-    }
-    
-    #composer-footer {
-      display: flex;
-      justify-content: flex-end; 
-      gap: 10px;
-      align-items: center;
-      margin-top: 15px;
-    }
-    #postingStatus {
-      font-size: 14px;
-      font-weight: 500;
-      margin-right: auto; 
-    }
-    #postingStatus.success { color: var(--success-color); }
-    #postingStatus.error { color: var(--danger-color); }
-
-    /* Floating Action Button (FAB) */
-    #fabButton {
-      position: fixed;
-      bottom: 30px;
-      right: 30px;
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      background-color: var(--primary-color);
-      color: white;
-      font-size: 30px;
-      line-height: 60px;
-      text-align: center;
-      box-shadow: var(--shadow);
-      cursor: pointer;
-      z-index: 999;
-      display: none; 
-    }
-
-    /* Post List */
-    #postList {
-      margin-top: 20px;
-      min-height: 200px; 
-    }
-    .post-item {
-      border: 1px solid var(--border-color);
-      padding: 18px;
-      border-radius: 12px;
-      margin-bottom: 15px;
-      background: #fdfdfd;
-      word-wrap: break-word;
-      position: relative; 
-    }
-    
-    .delete-btn {
-      position: absolute;
-      top: 15px;
-      right: 15px;
-      padding: 5px 10px;
-      font-size: 12px;
-    }
-    #no-posts {
-      text-align: center;
-      padding: 30px;
-      color: var(--text-light);
-    }
-    .post-comments-section {
-      margin-top: 15px;
-      padding-top: 10px;
-      border-top: 1px dashed var(--border-color);
-    }
-    .comment-list {
-      background: #fcfcfc;
-      padding: 10px;
-      border-radius: 8px;
-      margin-bottom: 10px;
-      max-height: 150px; 
-      overflow-y: auto;
-    }
-    .comment-item {
-      padding: 5px 0;
-      font-size: 14px;
-      line-height: 1.4;
-      word-wrap: break-word;
-    }
-    .comment-composer {
-      display: flex;
-      gap: 10px;
-      margin-top: 10px;
-    }
-    .comment-composer input {
-      flex-grow: 1;
-      padding: 8px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      font-family: "Poppins", sans-serif;
-    }
-    .btn-reaction {
-      padding: 5px 10px !important; 
-      font-size: 13px !important;
-      margin-top: 10px;
-    }
-    .status-message {
-      font-size: 12px;
-      margin-top: 5px;
-      display: block;
-      font-weight: 500;
-    }
-    .status-message.success { color: var(--success-color); }
-    .status-message.error { color: var(--danger-color); }
-
-    footer {
-      text-align: center;
-      padding: 20px;
-      color: var(--text-light);
-      font-size: 13px;
-      margin-top: 20px;
-    }
+    body { font-family: Arial, sans-serif; padding: 20px; background:#f7f9fc; }
+    .card { max-width:700px; margin:auto; background:#fff; padding:28px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
+    h1 { text-align:center; color:#222; }
+    h3 { margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
+    .row { margin:12px 0; display:flex; gap:10px; align-items:center; }
+    button { padding:10px 14px; border:0; border-radius:6px; cursor:pointer; font-weight: 600; }
+    #connectButton { background:#1e88e5; color:#fff; }
+    #registerButton { background:#43a047; color:#fff; }
+    #authButton { background:#ffb300; color:#222; }
+    #deactivateButton { background:#ef5350; color:#fff; }
+    #rotateButton { background:#ff9800; color:#fff; }
+    .status { padding:10px; border-radius:6px; margin-bottom:10px; }
+    .ok { background:#e8f5e9; color:#1b5e20; border:1px solid #c8e6c9; }
+    .err { background:#ffebee; color:#b71c1c; border:1px solid #ffcdd2; }
+    input[type="text"] { width:100%;padding:8px;border-radius:6px;border:1px solid #ccc; box-sizing: border-box;}
   </style>
 </head>
 <body>
+  <div class="card">
+    <h1>Privacy-Preserving Auth — Portal</h1>
 
-  <header>
-    <span> 🎓University Portal</span>
-    <div class="header-controls">
-      <button class="btn btn-primary" onclick="window.location.href='admin.html'" style="background-color: #ffb300; color: #333;">
-        🔑 Admin Panel
-      </button>
-      <button class="btn btn-primary" 
-              onclick="window.location.href='files.html'" 
-              style="background-color: var(--success-color); color: white;">
-        📝 Assignments
-      </button>
-      <button class="btn btn-danger" onclick="logout()">
-        Logout
-      </button>
+    <div id="status" class="status err">Status: Wallet Disconnected.</div>
+    <div class="row">
+      <div style="flex:1;">Current Account: <strong id="currentAccount">N/A</strong></div>
+      <div>Network: <strong id="networkName">N/A</strong></div>
     </div>
-  </header>
 
-  <div class="container">
-    <div id="public-wall">
-      <h2>🗣️ University Public Wall</h2>
+    <div class="row">
+      <button id="connectButton" onclick="connectWallet()">Connect MetaMask</button>
+      <button id="disconnectButton" onclick="disconnect()" style="display:none;">Disconnect</button>
+    </div>
 
-      <div id="wallet-info">
-        <span id="wallet-status">
-          Status: <strong>Disconnected</strong>
-        </span>
-        <button id="connectButton" class="btn btn-primary">Connect Wallet</button>
+    <h3>Registration & Authentication</h3>
+    <div class="row">
+      <button id="registerButton" onclick="registerUser()">Register</button>
+      <button id="authButton" onclick="authenticateUser()">Authenticate (Login)</button>
+      <button id="deactivateButton" onclick="deactivateAccount()">Deactivate My Account</button>
+    </div>
+    <div id="registerMessage" class="status" style="display:none;"></div>
+    <div id="authMessage" class="status" style="display:none;"></div>
+
+    <h3>DID Key Rotation</h3>
+    <div>
+      <label>New Wallet Address (Future DID Key):</label>
+      <input id="newWalletAddress" type="text" placeholder="0x..." style="margin-bottom: 10px;">
+      <div class="row">
+        <button id="rotateButton" onclick="updateDID()" style="flex:1;">Rotate DID Key</button>
       </div>
-    </div>
-    
-    <button id="fabButton" onclick="togglePostComposer(true)">+</button>
-    
-    <div id="postComposer">
-        <h3 style="margin-top: 0;">Share Your Update</h3>
-        <textarea id="postInput" placeholder="Type your post here..."></textarea>
-        <div id="composer-footer">
-          <span id="postingStatus"></span>
-          <button class="btn btn-danger" onclick="togglePostComposer(false)">Cancel</button>
-          <button id="postButton" class="btn btn-primary">Post to Wall</button>
-        </div>
+      <p style="font-size: 0.85em; color: #555; margin-top: 5px;">
+        Warning: This transfers your registration and all data to the new address.
+        You must confirm this transaction using your *current* wallet.
+      </p>
+      <div id="rotateMessage" class="status" style="display:none; margin-top: 10px;"></div>
     </div>
 
-    <div id="postList">
-      <p id="no-posts">Loading posts...</p>
+
+    <h3>Profile</h3>
+    <div>
+      <label>Profile CID (IPFS) or public pointer</label>
+      <input id="profileCid" type="text" placeholder="Qm..." style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;">
+      <div class="row"><button onclick="setProfileCid()">Save Profile CID</button></div>
+      <div id="profileMessage" class="status" style="display:none;"></div>
     </div>
-    
   </div>
 
-  <footer>&copy; 2025 Secure Portal | Posts are stored on the blockchain.</footer>
-
-  <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-
   <script>
-    // --- UTILITY FUNCTIONS ---
-    function shortAddr(a) {
-      return a ? `${a.slice(0, 6)}...${a.slice(-4)}` : "";
-    }
-    function escapeHtml(unsafe) {
-      if (typeof unsafe !== 'string') return '';
-      return unsafe
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
-    function setPostingStatus(message, type) { 
-      document.getElementById("postingStatus").textContent = message;
-      document.getElementById("postingStatus").className = type || ''; 
-    }
-    function logout() {
-      sessionStorage.removeItem('isWalletConnected'); 
-      alert("Logging out and returning to login page...");
-      window.location.href = "index.html";
-    }
 
-    // --- BLOCKCHAIN SETUP ---
-    const CONTRACT_ADDRESS = "0xbF1Bc8e3354600914376c7d6bE5981b18D79ddD8"; 
+    const CONTRACT_ADDRESS = "0xbF1Bc8e3354600914376c7d6bE5981b18D79ddD8";
     
-    const ABI = [
-      "function addPost(string calldata _text) external",
-      "function deletePost(uint256 index) external",
-      "function addComment(uint256 index, string calldata _text) external", 
-      "function toggleReaction(uint256 index) external", 
-      "function getPostCount() view returns (uint256)",
-      "function getPostDetails(uint256 index) view returns (address author, string memory text, uint256 timestamp, bool isDeleted, tuple(address author, string text, uint256 timestamp)[] comments, uint256 reactionCount)", 
-      "event PostCreated(uint256 indexed index, address indexed author, uint256 timestamp, string text)",
-      "event PostDeleted(uint256 indexed index, address indexed author)",
-      "event CommentAdded(uint256 indexed postIndex, address indexed author, uint256 timestamp, string text)", 
-      "event ReactionToggled(uint256 indexed postIndex, address indexed user, bool added)" 
+    // MODIFIED ABI: Removed old 'authenticate' and 'logAccess', added new secure functions
+    const CONTRACT_ABI = [
+      "function register() public",
+      "function deactivateAccount() public",
+      "function setProfileCID(string calldata cid) external",
+      "function isRegistered(address user) external view returns (bool)",
+      "function updateDID(address newWallet) external", 
+      
+      // NEW FUNCTIONS FOR SECURE AUTH (Challenge-Response)
+      "function getNonce(address user) external view returns (uint256)", 
+      "function authenticateWithSignature(bytes calldata signature) external", 
+      "event UserAccess(address indexed user, uint256 timestamp)",
+      "event Authenticated(address indexed user, uint256 timestamp, uint256 nonce)" // New event for login success
     ];
 
-    let provider, signer, contract, currentAccount; 
+    let provider, signer, contract, currentAccount;
 
-    const connectButton = document.getElementById("connectButton");
-    const walletStatus = document.getElementById("wallet-status");
-    const postComposer = document.getElementById("postComposer");
-    const postButton = document.getElementById("postButton");
-    const postInput = document.getElementById("postInput");
-    const postList = document.getElementById("postList");
-    const noPosts = document.getElementById("no-posts"); 
-    const fabButton = document.getElementById("fabButton");
+    function el(id){ return document.getElementById(id); }
+    function showStatus(t, ok=true){ el('status').textContent='Status: '+t; el('status').className='status '+(ok?'ok':'err'); }
+    function showMsg(id,t,ok=true){ const m=el(id); m.style.display='block'; m.textContent=t; m.className='status '+(ok?'ok':'err'); setTimeout(()=>m.style.display='none',5000); }
 
-    // --- CORE LOGIC ---
-
-    function togglePostComposer(show) {
-        if (show) {
-            postComposer.style.display = "block";
-            postInput.focus();
-        } else {
-            postComposer.style.display = "none";
-            postInput.value = ""; 
-            setPostingStatus("", null);
-        }
-    }
-
-    async function init() {
-      if (typeof window.ethereum === "undefined") {
-        connectButton.innerText = "Install MetaMask";
-        connectButton.onclick = () => window.open("https://metamask.io/");
-        walletStatus.innerHTML = "<strong>MetaMask Not Found</strong>";
-        if(noPosts) noPosts.textContent = "Please install MetaMask to use the Public Wall.";
-        return;
-      }
-      
-      // FIX: Use "any" network argument to prevent Ethers v5 failure on Sepolia's missing ENS resolver.
-      try {
-        provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-      } catch (e) {
-        console.error("Provider creation failed:", e);
-        if(noPosts) noPosts.textContent = "Error setting up provider. Ensure MetaMask is ready.";
-        return;
-      }
-
-      connectButton.onclick = connectWallet;
-      
-      // Load initial posts using read-only provider
-      try {
-        const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
-        await loadPosts(readOnlyContract);
-      } catch (e) {
-        console.error("Error loading read-only contract", e);
-        if(noPosts) noPosts.textContent = "Error loading contract. Is the address correct?";
-      }
-
-      if (sessionStorage.getItem('isWalletConnected') === 'true') {
-        connectWallet();
-      }
-    }
-
-    async function connectWallet() {
-      if (!provider) return;
-
-      try {
-        await provider.send("eth_requestAccounts", []);
-        signer = provider.getSigner();
-        currentAccount = await signer.getAddress(); 
-        
-        walletStatus.innerHTML = `Connected: <strong>${shortAddr(currentAccount)}</strong>`;
-        connectButton.style.display = "none";
-        fabButton.style.display = "block"; 
-        sessionStorage.setItem('isWalletConnected', 'true');
-        
-        contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-
-        // Listeners must be attached to the signed contract instance
-        contract.on("PostCreated", () => loadPosts(contract));
-        contract.on("PostDeleted", () => loadPosts(contract));
-        contract.on("CommentAdded", () => loadPosts(contract)); 
-        contract.on("ReactionToggled", () => loadPosts(contract)); 
-
-        await loadPosts(contract); 
-
-      } catch (err) {
-        console.error("Connection error:", err);
-        walletStatus.innerHTML = "<strong>Connection Failed</strong>";
-        sessionStorage.removeItem('isWalletConnected');
-        currentAccount = null; 
-        fabButton.style.display = "none"; 
-      }
-    }
-
-    postButton.addEventListener("click", async () => {
-      if (!contract) return alert("Please connect your wallet first.");
-      const message = postInput.value.trim();
-      if (!message) return alert("Please enter something to post.");
-      
-      try {
-        setPostingStatus("Posting to blockchain... (Confirm Tx)", null);
-        postButton.disabled = true; // Disable button during transaction
-        const tx = await contract.addPost(message);
-        await tx.wait();
-        setPostingStatus("Posted Successfully!", "success");
-        togglePostComposer(false); 
-      } catch (err) {
-        console.error("Post error:", err);
-        setPostingStatus(`Transaction Failed: ${err.reason || err.message}`, "error");
-        setTimeout(() => setPostingStatus("", null), 5000); 
-      } finally {
-        postButton.disabled = false; // Re-enable button
-      }
-    });
-
-    async function loadPosts(contractInstance) {
-       if(!contractInstance) return; 
-       
-       const noPostsEl = document.getElementById('no-posts'); 
-       
-       if (noPostsEl) {
-           noPostsEl.textContent = "Loading posts from the blockchain...";
-           postList.innerHTML = ""; 
-           postList.appendChild(noPostsEl); 
-       }
-      
-      try {
-        const countBigNum = await contractInstance.getPostCount();
-        const count = countBigNum.toNumber();
-        
-        let visiblePostCount = 0;
-        const postsToRender = []; 
-
-        // Fetching post details
-        for (let i = count - 1; i >= 0; i--) {
-          const [author, text, ts, isDeleted, comments, reactionCount] = await contractInstance.getPostDetails(i);
-          
-          if (!isDeleted) {
-              postsToRender.push({ 
-                  index: i, 
-                  author, 
-                  text, 
-                  timestamp: ts.toNumber(),
-                  comments,         
-                  reactionCount: reactionCount.toNumber() 
-              });
-              visiblePostCount++;
-          }
-        }
-        
-        postList.innerHTML = ""; 
-
-        if (visiblePostCount === 0) {
-          if(noPostsEl) {
-              noPostsEl.textContent = "No posts yet. Be the first!";
-              postList.appendChild(noPostsEl);
-          }
-        } else {
-            postsToRender.forEach(post => appendPostToUI(post));
-        }
-
-      } catch (err) {
-        console.error("Load posts error:", err);
-        if(noPostsEl) {
-            postList.innerHTML = ""; 
-            noPostsEl.textContent = "Error: Could not load posts. Is the contract address correct and deployed?";
-            postList.appendChild(noPostsEl);
-        }
-      }
-    }
-
-    function appendPostToUI({ index, author, text, timestamp, comments, reactionCount }) {
-      const d = new Date(timestamp * 1000);
-      const el = document.createElement("div");
-      el.className = "post-item";
-      el.id = `post-${index}`; 
-
-      let deleteButtonHtml = '';
-      if (currentAccount && author.toLowerCase() === currentAccount.toLowerCase()) {
-        deleteButtonHtml = `<button class="btn btn-danger delete-btn" onclick="handleDelete(${index})">Delete</button>`;
-      }
-
-      let commentsHtml = comments.map(c => {
-          const commentDate = new Date(c.timestamp.toNumber() * 1000).toLocaleString();
-          return `<div class="comment-item">
-              <strong>${shortAddr(c.author)}:</strong> ${escapeHtml(c.text)}
-              <span style="float: right; color: var(--text-light); font-size: 11px;">${commentDate}</span>
-          </div>`;
-      }).join('');
-
-
-      el.innerHTML = `
-        ${deleteButtonHtml} 
-        <div class="post-header">
-          <strong>${shortAddr(author)}</strong> ∙ ${d.toLocaleString()}
-        </div>
-        <div class="post-content">${escapeHtml(text)}</div>
-
-        <button class="btn btn-primary btn-reaction" id="reaction-btn-${index}" onclick="handleReaction(${index})">
-          👍 React (${reactionCount})
-        </button>
-
-        <div class="post-comments-section">
-            <h4 style="margin-top: 15px; margin-bottom: 5px; color: var(--primary-color);">Comments (${comments.length})</h4>
-            <div class="comment-list">
-                ${commentsHtml || '<div class="comment-item" style="color:var(--text-light); text-align: center;">No comments yet.</div>'}
-            </div>
-            <div class="comment-composer">
-                <input type="text" id="comment-input-${index}" placeholder="Add a comment..." />
-                <button class="btn btn-primary" id="comment-btn-${index}" onclick="handleComment(${index})">Comment</button>
-            </div>
-            <span id="comment-status-${index}" class="status-message"></span>
-        </div>`;
-      postList.appendChild(el);
+    async function connectWallet(){
+      if(!window.ethereum){showStatus('MetaMask not installed',false);return;}
+      provider=new ethers.providers.Web3Provider(window.ethereum);await provider.send("eth_requestAccounts",[]);
+      signer=provider.getSigner();currentAccount=await signer.getAddress();
+      contract=new ethers.Contract(CONTRACT_ADDRESS,CONTRACT_ABI,signer);
+      const n=await provider.getNetwork();el('currentAccount').textContent=currentAccount;el('networkName').textContent=n.name;showStatus('Connected',true);
+      el('connectButton').style.display='none';el('disconnectButton').style.display='inline-block';
     }
     
-    async function handleDelete(index) {
-      if (!contract) return alert("Please connect your wallet first.");
-      if (!confirm("Are you sure you want to delete this post? This action cannot be undone on the blockchain.")) return;
-      const postElement = document.getElementById(`post-${index}`);
-      
-      try {
-        setPostingStatus("Deleting post...", null);
-        postElement.style.opacity = '0.5'; // Visual feedback
-        const tx = await contract.deletePost(index);
-        await tx.wait();
-        setPostingStatus("Post deleted!", "success");
-        
-        if (postElement) postElement.remove();
-        
-        if (postList.children.length === 0) {
-             const newNoPosts = document.getElementById('no-posts') || document.createElement('p');
-             newNoPosts.id = 'no-posts';
-             newNoPosts.textContent = "No posts yet. Be the first!";
-             postList.appendChild(newNoPosts);
-        }
+    function disconnect(){provider=null;signer=null;contract=null;currentAccount=null;el('currentAccount').textContent='N/A';el('networkName').textContent='N/A';showStatus('Disconnected',false);el('connectButton').style.display='inline-block';el('disconnectButton').style.display='none';}
+    
+    async function registerUser(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try{const tx=await contract.register();showMsg('registerMessage','Confirm registration in MetaMask...');await tx.wait();showMsg('registerMessage','Registered successfully!');}catch(e){showMsg('registerMessage', e.error?.message || e.message || 'Registration failed.',false);}}
+    
+    // NEW SECURE AUTHENTICATION FUNCTION (Challenge-Response)
+// NEW SECURE AUTHENTICATION FUNCTION (Challenge-Response - Hash Alignment Fix)
+async function authenticateUser(){
+  if(!contract){showMsg('authMessage','Connect wallet first',false);return;}
+  
+  try {
+    // --- STEP 1: Get the current nonce/challenge from the contract ---
+    const nonceBigNum = await contract.getNonce(currentAccount);
+    const nonce = nonceBigNum.toNumber();
 
-        setTimeout(() => setPostingStatus("", null), 3000);
-      } catch (err) {
-        console.error("Delete error:", err);
-        postElement.style.opacity = '1.0';
-        setPostingStatus(`Delete Failed: ${err.reason || err.message}`, "error");
-        setTimeout(() => setPostingStatus("", null), 5000);
+    // --- STEP 2: Create the challenge message (MUST MATCH THE CONTRACT EXACTLY) ---
+    // The contract uses abi.encodePacked(bytes("UniversityPortalLogin:"), uint256(nonce))
+    // We must reproduce this hash EXACTLY using Ethers' utils.solidityPack
+    
+    // a) Define the challenge components
+    const messagePrefix = "UniversityPortalLogin:";
+    
+    // b) Hash the packed data structure to get the raw 32-byte hash
+    // This hash value is what the contract generates with keccak256(abi.encodePacked(...))
+    const packedHash = ethers.utils.solidityKeccak256(
+      ["string", "uint256"], 
+      [messagePrefix, nonce]
+    );
+
+    // --- STEP 3: Sign the RAW HASH with the current wallet (MetaMask prompt) ---
+    showMsg('authMessage',`Confirm the cryptographic challenge signature in MetaMask. Challenge Nonce: ${nonce}`, true);
+    
+    // CRITICAL CHANGE: We sign the RAW HASH instead of a readable message.
+    // This ensures Ethers uses the correct low-level signature format that the contract expects.
+    const signature = await signer.signMessage(ethers.utils.arrayify(packedHash)); 
+
+    // --- STEP 4: Send the signature back to the contract for verification ---
+    showMsg('authMessage','Signature confirmed. Sending to blockchain for verification...', true);
+    
+    const tx = await contract.authenticateWithSignature(signature);
+    await tx.wait(); 
+    
+    showMsg('authMessage','✅ Authentication successful! Access granted.', true);
+    setTimeout(()=>window.location.href='dashboard.html', 1500); 
+    
+  } catch (e) {
+      console.error("Authentication Error:", e);
+      const errorMsg = e.error?.message || e.message || 'Authentication failed. Check console for details.';
+      if (errorMsg.includes('User denied transaction signature')) {
+         showMsg('authMessage', 'Login attempt cancelled by user.', false);
+      } else {
+         showMsg('authMessage', `Authentication Failed: ${errorMsg}`, false);
       }
-    }
+  }
+}
+    
+    async function deactivateAccount(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try { const tx=await contract.deactivateAccount(); showMsg('registerMessage', 'Confirm deactivation in MetaMask...'); await tx.wait(); showMsg('registerMessage','Account deactivated successfully.');} catch(e) { showMsg('registerMessage', e.error?.message || e.message || 'Deactivation failed.', false); }}
+    
+    async function setProfileCid(){if(!contract){showMsg('profileMessage','Connect wallet first',false);return;}const cid=el('profileCid').value.trim();if(!cid){showMsg('profileMessage','Please enter a Profile CID or pointer.',false);return;}try{const tx=await contract.setProfileCID(cid); showMsg('profileMessage', 'Confirm saving profile CID in MetaMask...'); await tx.wait();showMsg('profileMessage','Profile CID saved successfully!');} catch(e) {showMsg('profileMessage', e.error?.message || e.message || 'Failed to save Profile CID.',false);}}
 
-    async function handleComment(index) {
-      if (!contract) return alert("Please connect your wallet first.");
-      const inputEl = document.getElementById(`comment-input-${index}`);
-      const statusEl = document.getElementById(`comment-status-${index}`);
-      const buttonEl = document.getElementById(`comment-btn-${index}`);
-      const comment = inputEl.value.trim();
+    async function updateDID() {
+      if (!contract) { showMsg('rotateMessage', 'Connect wallet first', false); return; }
       
-      if (!comment) {
-        statusEl.textContent = "Comment cannot be empty.";
-        statusEl.className = 'error';
-        setTimeout(() => statusEl.textContent = "", 3000);
+      const newWallet = el('newWalletAddress').value.trim();
+      
+      if (!ethers.utils.isAddress(newWallet)) {
+        showMsg('rotateMessage', 'Please enter a valid Ethereum address for the new wallet.', false);
         return;
       }
 
-      try {
-        statusEl.textContent = "Sending comment transaction...";
-        statusEl.className = 'success';
-        buttonEl.disabled = true;
-
-        const tx = await contract.addComment(index, comment);
-        await tx.wait();
-        
-        statusEl.textContent = "Comment posted successfully! Refreshing...";
-        inputEl.value = ""; 
-        setTimeout(() => statusEl.textContent = "", 3000);
-        
-      } catch (err) {
-        console.error("Comment error:", err);
-        statusEl.textContent = `Comment Failed: ${err.error?.message || err.message}`;
-        statusEl.className = 'error';
-        setTimeout(() => statusEl.textContent = "", 5000);
-      } finally {
-        buttonEl.disabled = false;
+      if (newWallet.toLowerCase() === currentAccount.toLowerCase()) {
+        showMsg('rotateMessage', 'New wallet address cannot be the same as the current one.', false);
+        return;
       }
-    }
-
-    async function handleReaction(index) {
-      if (!contract) return alert("Please connect your wallet first.");
-      const reactionButton = document.getElementById(`reaction-btn-${index}`);
       
       try {
-        const confirmMsg = "Confirm transaction to toggle your reaction?";
-        if (!confirm(confirmMsg)) return;
-        
-        const originalText = reactionButton.textContent;
-        reactionButton.textContent = "Processing...";
-        reactionButton.disabled = true;
-
-        const tx = await contract.toggleReaction(index);
+        showMsg('rotateMessage', `Confirm key rotation to ${newWallet} in MetaMask...`, true);
+        const tx = await contract.updateDID(newWallet);
         await tx.wait();
         
-      } catch (err) {
-        console.error("Reaction error:", err);
-        alert(`Reaction Failed: ${err.error?.message || err.message}`);
-      } finally {
-        // Reload posts automatically via event listener, no need to re-enable button here
+        showMsg('rotateMessage', `✅ DID successfully rotated! Your identity is now controlled by ${newWallet}. Please disconnect and reconnect with the new wallet.`, true, 8000);
+        disconnect(); 
+        
+      } catch (e) {
+        console.error("Key Rotation Error:", e);
+        showMsg('rotateMessage', e.error?.message || e.message || 'Key rotation failed. Check console for details.', false);
       }
     }
 
-    window.addEventListener("DOMContentLoaded", init);
-
-     if (typeof window.ethereum !== 'undefined') {
+    if (typeof window.ethereum !== 'undefined') {
         window.ethereum.on('accountsChanged', (accounts) => {
-             window.location.reload(); 
-             if(accounts.length === 0) {
-                 sessionStorage.removeItem('isWalletConnected');
-             }
+            if (accounts.length === 0) {
+              disconnect();
+            } else {
+              window.location.reload(); 
+            }
         });
-        window.ethereum.on('chainChanged', () => {
+        window.ethereum.on('chainChanged', (chainId) => {
             window.location.reload();
         });
     }
+
   </script>
 </body>
 </html>
