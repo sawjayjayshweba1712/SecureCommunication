@@ -2,23 +2,29 @@
 pragma solidity ^0.8.19;
 
 contract AuthManager {
-    address public owner;
+    address public owner; 
 
+    // Core Identity Mappings
     mapping(address => bool) private registered;
     mapping(address => string) private roles;
-    mapping(address => string) private profileCID;
+    mapping(address => string) private profileCID; // IPFS CID or other pointer
 
-    mapping(address => bytes32) private activeChallenges; // Stores current login challenges
+    // NEW: Key Rotation Mapping (Old Address => New Address)
+    // Used to check if an address has a pending rotation target.
     mapping(address => address) private pendingRotation;
 
+    // --- Events ---
     event Registered(address indexed user);
     event Deactivated(address indexed user);
     event UserRemoved(address indexed user);
     event RoleSet(address indexed user, string role);
     event ProfileUpdated(address indexed user, string cid);
     event UserAccess(address indexed user, uint256 timestamp);
+    
+    // NEW: Key Rotation Events
     event KeyRotationRequested(address indexed oldWallet, address indexed newWallet);
     event DIDUpdated(address indexed oldWallet, address indexed newWallet);
+
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner");
@@ -29,9 +35,8 @@ contract AuthManager {
         owner = msg.sender;
     }
 
-    // -----------------------------
-    // Core Identity Functions
-    // -----------------------------
+    // --- Core Identity Functions ---
+    
     function register() external {
         require(!registered[msg.sender], "Already registered");
         registered[msg.sender] = true;
@@ -41,108 +46,85 @@ contract AuthManager {
     function deactivateAccount() external {
         require(registered[msg.sender], "Not registered");
         registered[msg.sender] = false;
+        // Optionally clear other data here if deactivation means full data removal
         emit Deactivated(msg.sender);
     }
 
     function removeUser(address user) external onlyOwner {
         require(registered[user], "User not registered");
         registered[user] = false;
+        // Clear all associated data
         delete roles[user];
         delete profileCID[user];
         emit UserRemoved(user);
     }
 
-    // -----------------------------
-    // Challenge-Response Authentication
-    // -----------------------------
-    function getChallenge() external returns (bytes32) {
-        require(registered[msg.sender], "User not registered");
+    // --- DID Key Rotation Functions (NEW) ---
 
-        // Generate a pseudo-random challenge using block.timestamp + address
-        bytes32 challenge = keccak256(abi.encodePacked(block.timestamp, block.number, msg.sender));
-        activeChallenges[msg.sender] = challenge;
-        return challenge;
-    }
-
-    function verifySignature(bytes32 challenge, bytes memory signature) external {
-        require(registered[msg.sender], "User not registered");
-        require(activeChallenges[msg.sender] == challenge, "Invalid or expired challenge");
-
-        // Ethereum signed message prefix
-        bytes32 ethSignedMessage = keccak256(
-            abi.encodePacked("\x19Ethereum Signed Message:\n32", challenge)
-        );
-
-        // Recover signer
-        address signer = recoverSigner(ethSignedMessage, signature);
-        require(signer == msg.sender, "Invalid signature");
-
-        // Authentication successful → log access
-        emit UserAccess(msg.sender, block.timestamp);
-
-        // Clear challenge to prevent replay
-        delete activeChallenges[msg.sender];
-    }
-
-    function recoverSigner(bytes32 _ethSignedMessageHash, bytes memory _signature) internal pure returns (address) {
-        require(_signature.length == 65, "Invalid signature length");
-
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-
-        assembly {
-            r := mload(add(_signature, 32))
-            s := mload(add(_signature, 64))
-            v := byte(0, mload(add(_signature, 96)))
-        }
-
-        if (v < 27) {
-            v += 27;
-        }
-
-        return ecrecover(_ethSignedMessageHash, v, r, s);
-    }
-
-    // -----------------------------
-    // DID Key Rotation Functions
-    // -----------------------------
+    /// @notice Initiates the key rotation process to a new wallet address.
+    /// The user must call this function using their current, registered wallet (msg.sender).
     function requestKeyRotation(address newWallet) external {
-        require(registered[msg.sender], "Must be registered");
-        require(newWallet != address(0), "New wallet zero");
-        require(newWallet != msg.sender, "Cannot rotate to same wallet");
-        require(!registered[newWallet], "New wallet already registered");
-
+        require(registered[msg.sender], "Must be a registered user to rotate DID key");
+        require(newWallet != address(0), "New wallet cannot be the zero address");
+        require(msg.sender != newWallet, "Cannot rotate to the same address");
+        require(!registered[newWallet], "New wallet is already registered");
+        
+        // Store the request for the new wallet to be associated with the old one's data.
         pendingRotation[msg.sender] = newWallet;
+        
         emit KeyRotationRequested(msg.sender, newWallet);
     }
 
+    /// @notice Finalizes the key rotation, transferring all identity data to the new address.
+    /// User signs with old wallet to approve (transaction msg.sender is the old wallet).
     function updateDID(address newWallet) external {
         address oldWallet = msg.sender;
-        require(registered[oldWallet], "Old wallet not registered");
 
-        registered[newWallet] = registered[oldWallet];
-        roles[newWallet] = roles[oldWallet];
-        profileCID[newWallet] = profileCID[oldWallet];
+        require(registered[oldWallet], "Old wallet is not registered");
+        // We don't need to check pendingRotation here since the user is signing with the old wallet.
+        // The fact that the oldWallet is the msg.sender is the proof of key control.
 
+        // 1. Move the data from oldWallet to newWallet
+        registered[newWallet] = registered[oldWallet]; // Transfer registration status
+        roles[newWallet] = roles[oldWallet];         // Transfer role
+        profileCID[newWallet] = profileCID[oldWallet]; // Transfer profile CID
+
+        // 2. Clear the old wallet's state
         delete registered[oldWallet];
         delete roles[oldWallet];
         delete profileCID[oldWallet];
-        delete pendingRotation[oldWallet];
+        delete pendingRotation[oldWallet]; // Clear any pending request
 
+        // 3. Emit event and mark success
         emit DIDUpdated(oldWallet, newWallet);
     }
+    
+    // --- Utility & Getter Functions ---
 
-    // -----------------------------
-    // Utility Functions
-    // -----------------------------
+    function authenticate(address user) external view returns (bool) {
+        return registered[user];
+    }
+
     function isRegistered(address user) external view returns (bool) {
         return registered[user];
     }
 
     function logAccess() external {
-        require(registered[msg.sender], "Must be registered");
+        require(registered[msg.sender], "Must be registered to log access");
         emit UserAccess(msg.sender, block.timestamp);
+    }
+
+    function setRole(address user, string calldata role) external onlyOwner {
+        roles[user] = role;
+        emit RoleSet(user, role);
+    }
+    
+    function getMyRole() external view returns (string memory) {
+        return roles[msg.sender];
+    }
+
+    function getRole(address user) external view returns (string memory) {
+        return roles[user];
     }
 
     function setProfileCID(string calldata cid) external {
