@@ -270,11 +270,21 @@
         
         await loadBoxes(fileRegistryContract);
 
-      } catch (err) {
+      } catch (err)  {
         console.error("Initialization error:", err);
-        el('wallet-status-info').textContent = `Connection/Initialization Error. ${err.message}`;
-        el('loadingMessage').textContent = "Could not load boxes due to connection error.";
-      }
+        
+        // *** FIX APPLIED HERE ***
+        const walletStatus = el('wallet-status-info');
+        const loadingMsg = el('loadingMessage');
+        
+        if (walletStatus) {
+            walletStatus.textContent = `Connection/Initialization Error. ${err.message}`;
+        }
+        if (loadingMsg) {
+            loadingMsg.textContent = "Could not load boxes due to connection error. Please ensure MetaMask is connected to the correct network and the contract address is correct.";
+        }
+        // **********************
+    }
     }
 
     // --- Teacher Functions (Create Box) ---
