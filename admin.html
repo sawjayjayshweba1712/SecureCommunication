@@ -25,6 +25,8 @@
     #removeUserBtn:hover { background:#d32f2f; }
     #assignRoleBtn { background:#43a047; color:#fff; }
     #assignRoleBtn:hover { background:#2e7d32; }
+    #checkRoleBtn { background:#00bcd4; color:#fff; }
+    #checkRoleBtn:hover { background:#0097a7; }
     #backBtn { background:#78909c; color:#fff; margin-top:30px; }
     #backBtn:hover { background: #546e7a; }
     #ownerInfo { padding:15px; background:#fffde7; border: 1px solid #fff9c4; border-left: 5px solid #fdd835; border-radius:8px; margin-bottom:20px; font-size:14px; }
@@ -80,6 +82,18 @@
             </div>
             <div id="roleStatus" class="message" style="display:none;"></div>
         </section>
+        
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 25px 0;" />
+        
+        <section id="check-role-section">
+            <h2>🔎 Check User Role</h2>
+            <p style="font-size: 14px; color: #555;">Enter an address to view its assigned role from the contract.</p>
+            <div class="action-row">
+                <input type="text" id="userAddressToRead" placeholder="User's Ethereum Address (0x...)">
+                <button id="checkRoleBtn" onclick="checkRole()">Check Role</button>
+            </div>
+            <div id="checkRoleStatus" class="message" style="display:none;"></div>
+        </section>
 
         <hr style="border: 0; border-top: 1px solid #eee; margin: 25px 0;" />
 
@@ -97,14 +111,15 @@
   </div>
 
   <script>
-    // 💡 AuthManager Contract Address (UPDATED to 0xE71c11CF485D9ac41f051b20018CF2d2bD1d2ABe)
+    // 💡 AuthManager Contract Address (UPDATED to latest deployment)
     const CONTRACT_ADDRESS = "0xE71c11CF485D9ac41f051b20018CF2d2bD1d2ABe";
     
-    // MODIFIED: Added UserAccess event to ABI
+    // MODIFIED: Added UserAccess event to ABI and getRole for role checking
     const CONTRACT_ABI = [
       "function removeUser(address user) external", 
       "function setRole(address user, string calldata role) external", 
       "function owner() public view returns (address)",
+      "function getRole(address user) view returns (string memory)", // Added for checkRole function
       "event UserAccess(address indexed user, uint256 timestamp)" 
     ];
 
@@ -235,6 +250,24 @@
       } catch(err){
         console.error(err);
         showMsg('roleStatus', `❌ Failed to set role: ${err.error?.message || err.message}`, false);
+      }
+    }
+
+    async function checkRole(){
+      const target = el('userAddressToRead').value.trim();
+      if(!contract) { showMsg('checkRoleStatus', 'Wallet not connected.', false); return; }
+      if(!ethers.utils.isAddress(target)){ showMsg('checkRoleStatus', 'Invalid Ethereum address provided.', false); return; }
+      
+      try {
+        // Call the view function to get the role
+        const role = await contract.getRole(target); 
+        
+        const roleText = role || "N/A (Default: Member/Student)";
+        showMsg('checkRoleStatus', `✅ Role for ${target}: ${roleText}`, true, 8000);
+        
+      } catch(err){
+        console.error(err);
+        showMsg('checkRoleStatus', `❌ Failed to read role: ${err.message}`, false);
       }
     }
 
