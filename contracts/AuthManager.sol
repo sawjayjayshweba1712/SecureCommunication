@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
- 
+
 contract AuthManager {
     address public owner;
     // Core Identity Mappings
@@ -8,7 +8,7 @@ contract AuthManager {
     mapping(address => string) private roles;
     mapping(address => string) private profileCID; 
 
-    // NEW MAPPING: Tracks a unique number used once for cryptographic signing (DID Auth).
+    // MAPPING: Tracks a unique number used once for cryptographic signing (DID Auth).
     mapping(address => uint256) private nonces; 
 
     // Key Rotation Mapping (Old Address => New Address)
@@ -48,7 +48,7 @@ contract AuthManager {
         return ecrecover(hash, v, r, s);
     }
 
-    // NEW: Minimal uint256 to string conversion (needed for EIP-191 prefixing logic)
+    // Minimal uint256 to string conversion (needed for EIP-191 prefixing logic)
     function toString(uint256 value) internal pure returns (string memory) {
         if (value == 0) {
             return "0";
@@ -106,17 +106,18 @@ contract AuthManager {
         return nonces[user];
     }
     
-    /// @notice Performs secure Challenge-Response authentication using the user's signature.
-    /// CRITICAL FIX: The contract now re-prefixes the hash to match Ethers' signer.signMessage().
-    function authenticateWithSignature(bytes calldata signature) external {
+    /// @notice Performs SECURE Challenge-Response authentication using the user's signature.
+    /// CRITICAL FIX: Changed to 'view' to eliminate the transaction request pop-up.
+    /// The frontend is responsible for ensuring the nonce is fresh.
+    function authenticateWithSignature(bytes calldata signature, uint256 nonce) external view returns (bool) {
         address user = msg.sender;
         require(registered[user], "Authentication Failed: User not registered");
         
         uint256 currentNonce = nonces[user];
-        
+
         // 1. Reconstruct the exact string message the frontend signed.
         string memory message = string(
-            abi.encodePacked("UniversityPortalLogin:", toString(currentNonce))
+            abi.encodePacked("UniversityPortalLogin:", toString(nonce))
         );
         
         // 2. Compute the EIP-191 prefixed hash (matching Ethers' signMessage logic).
@@ -130,12 +131,11 @@ contract AuthManager {
         // 3. Recover the address from the prefixed hash and signature.
         address recoveredAddress = recover(prefixedHash, signature);
         
+        // 4. Verification Check: Must match claimed user AND the nonce must be current.
         require(recoveredAddress == user, "Authentication Failed: Invalid signature or message");
+        require(nonce == currentNonce, "Authentication Failed: Invalid or stale nonce");
         
-        // 4. Success!
-        nonces[user] = nonces[user] + 1;
-        emit Authenticated(user, block.timestamp, currentNonce);
-        emit UserAccess(user, block.timestamp);
+        return true;
     }
 
     // --- DID Key Rotation Functions ---
@@ -158,7 +158,7 @@ contract AuthManager {
         registered[newWallet] = registered[oldWallet];
         roles[newWallet] = roles[oldWallet];
         profileCID[newWallet] = profileCID[oldWallet];
-        nonces[newWallet] = nonces[oldWallet]; // Transfer the nonce
+        nonces[newWallet] = nonces[oldWallet]; 
 
         delete registered[oldWallet];
         delete nonces[oldWallet];
