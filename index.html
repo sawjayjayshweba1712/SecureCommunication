@@ -73,7 +73,7 @@
 
   <script>
     // ⚠️ PASTE YOUR *NEW* AuthManager CONTRACT ADDRESS HERE
-    const CONTRACT_ADDRESS = "0xE71c11CF485D9ac41f051b20018CF2d2bD1d2ABe";
+    const CONTRACT_ADDRESS = "0x0C04CccB10696083D9D10Da88251a7f512763227";
     
     // MODIFIED: Added updateDID to the ABI
     const CONTRACT_ABI = [
@@ -107,26 +107,25 @@
     async function registerUser(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try{const tx=await contract.register();showMsg('registerMessage','Confirm registration in MetaMask...');await tx.wait();showMsg('registerMessage','Registered successfully!');}catch(e){showMsg('registerMessage', e.error?.message || e.message || 'Registration failed.',false);}}
     
     async function authenticateUser(){
-      if(!contract){showMsg('authMessage','Connect wallet first',false);return;}
-      
-      try {
-        const isAuth = await contract.authenticate(currentAccount);
-        
-        if(isAuth){
-          showMsg('authMessage','Authenticated! Logging your access...', true);
-          const tx = await contract.logAccess(); 
-          await tx.wait(); 
-          
-          showMsg('authMessage','Access logged! Redirecting to dashboard...', true);
-          setTimeout(()=>window.location.href='dashboard.html', 1500); 
-        
-        } else {
-          showMsg('authMessage','Authentication Failed: User not registered.',false);
-        }
-      } catch (e) {
-          console.error("Authentication or Logging Error:", e);
-          showMsg('authMessage', e.error?.message || e.message || 'Authentication or logging failed.', false);
-      }
+      if(!contract){ showMsg('authMessage','Connect wallet first',false); return; }
+
+  try {
+    // 1️⃣ Get challenge from contract
+    const challenge = await contract.getChallenge();
+
+    // 2️⃣ Ask user to sign challenge
+    const signature = await signer.signMessage(ethers.utils.arrayify(challenge));
+
+    // 3️⃣ Send signature to contract to verify
+    const tx = await contract.verifySignature(challenge, signature);
+    await tx.wait();
+
+    showMsg('authMessage','✅ Authentication successful! Access logged.', true);
+    setTimeout(()=>window.location.href='dashboard.html',1500);
+  } catch(e){
+    console.error("Authentication Error:", e);
+    showMsg('authMessage', e.error?.message || e.message || 'Authentication failed.', false);
+  }
     }
     
     async function deactivateAccount(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try { const tx=await contract.deactivateAccount(); showMsg('registerMessage', 'Confirm deactivation in MetaMask...'); await tx.wait(); showMsg('registerMessage','Account deactivated successfully.');} catch(e) { showMsg('registerMessage', e.error?.message || e.message || 'Deactivation failed.', false); }}
