@@ -106,15 +106,15 @@
     
     async function registerUser(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try{const tx=await contract.register();showMsg('registerMessage','Confirm registration in MetaMask...');await tx.wait();showMsg('registerMessage','Registered successfully!');}catch(e){showMsg('registerMessage', e.error?.message || e.message || 'Registration failed.',false);}}
     
-    // Challenge-Response Authentication Function
+    // Challenge-Response Authentication Function - FIX APPLIED
     async function authenticateUser(){
       if(!signer || !contract){showMsg('authMessage','Connect wallet first',false);return;}
       
       try {
-        // 0. Check if registered (free call)
+        // 0. Explicitly check if registered (free call)
         const isRegistered = await contract.isRegistered(currentAccount);
         if(!isRegistered){
-            showMsg('authMessage','Authentication Failed: User not registered.',false);
+            showMsg('authMessage','Authentication Failed: User not registered. Please click "Register" first.',false);
             return;
         }
 
@@ -126,7 +126,6 @@
         // 2. Sign Challenge (Client-side key operation, free)
         showMsg('authMessage','Step 2: Please sign the challenge in MetaMask. (No gas cost for signing)', true);
         
-        // Ethers.js automatically prefixes the message per EIP-191
         const signature = await signer.signMessage(ethers.utils.arrayify(challengeHex));
         
         showMsg('authMessage','Step 3: Signature received. Sending to contract for verification...', true);
@@ -141,9 +140,20 @@
         
       } catch (e) {
           console.error("Authentication or Signing Error:", e);
-          const errorMessage = e.message.includes("User denied message signature") 
-                             ? "Authentication Failed: Signature denied by user." 
-                             : e.error?.message || e.message || 'Authentication failed.';
+          let errorMessage;
+          
+          if (e.message.includes("User denied message signature")) {
+              errorMessage = "Authentication Failed: Signature denied by user.";
+          } 
+          // Check for the specific contract revert reason (if available)
+          else if (e.message.includes("User is not registered") || e.message.includes("CALL_EXCEPTION")) {
+              // This handles cases where the isRegistered check might pass, but the 
+              // getChallenge call still reverts due to chain context/caching issues.
+              errorMessage = "Authentication Failed: User not registered. Please click 'Register' first.";
+          }
+          else {
+              errorMessage = e.error?.message || e.message || 'Authentication failed.';
+          }
           showMsg('authMessage', errorMessage, false);
       }
     }
