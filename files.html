@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>File Submission Portal</title>
+  <title>Assignments & File Submissions</title>
   <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --primary-color: #00796b; /* Teal */
-      --primary-hover: #004d40;
+      --primary-color: #273c75;
+      --primary-hover: #40739e;
       --bg-color: #f4f6fb;
       --card-bg: #ffffff;
       --text-color: #2f3640;
@@ -17,50 +17,38 @@
       --border-color: #dfe4ea;
       --success-color: #43a047;
       --danger-color: #c23616;
-      --header-height: 60px;
+      --shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
     }
     body {
-      margin: 0;
       font-family: "Poppins", sans-serif;
       background-color: var(--bg-color);
       color: var(--text-color);
-      padding-top: var(--header-height); 
-      min-height: 100vh;
-    }
-    header {
-      position: fixed; 
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: var(--header-height);
-      z-index: 1000; 
-      background-color: var(--primary-color);
-      color: white;
-      padding: 18px 30px;
-      font-size: 22px;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      box-sizing: border-box; 
+      padding: 40px 20px;
     }
     .container {
-      padding: 30px 10%; 
-      margin: 0 auto;
+      max-width: 1000px;
+      margin: auto;
     }
-    .content-box {
-        max-width: 1000px;
-        width: 100%;
-        margin: 20px auto;
-        background: var(--card-bg);
-        border-radius: 15px;
-        padding: 30px;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+    .card {
+      background: var(--card-bg);
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: var(--shadow);
+      margin-bottom: 25px;
+    }
+    h1 {
+      color: var(--primary-color);
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    h2 {
+      color: var(--primary-hover);
+      margin-top: 0;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 10px;
+      margin-bottom: 20px;
     }
     .btn {
-      font-family: "Poppins", sans-serif;
       padding: 10px 20px;
       border: none;
       border-radius: 8px;
@@ -77,339 +65,352 @@
       background-color: var(--primary-hover);
     }
     .btn-success {
-        background-color: var(--success-color);
-        color: white;
+      background-color: var(--success-color);
+      color: white;
     }
     .btn-success:hover {
-        background-color: #2e7d32;
+      background-color: #388e3c;
     }
-    h2 {
-        color: var(--primary-color);
-        border-bottom: 2px solid var(--border-color);
-        padding-bottom: 10px;
-        margin-top: 0;
+    .btn-danger {
+      background-color: var(--danger-color);
+      color: white;
     }
-    #role-info {
-        padding: 15px;
-        border-radius: 8px;
-        background: #e0f2f1;
-        border: 1px solid #b2dfdb;
+    .btn-back {
+        background-color: #7f8fa6;
+        color: white;
         margin-bottom: 20px;
     }
-    .submission-box {
-        border: 1px solid var(--border-color);
+    input[type="text"], input[type="date"] {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      width: 100%;
+      box-sizing: border-box;
+      margin-top: 5px;
+      margin-bottom: 15px;
+      font-family: inherit;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .status-message {
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 15px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .status-success {
+      background-color: #e8f5e9;
+      color: var(--success-color);
+      border: 1px solid #c8e6c9;
+    }
+    .status-error {
+      background-color: #ffebee;
+      color: var(--danger-color);
+      border: 1px solid #ffcdd2;
+    }
+    
+    /* Submission Box Styles */
+    #submissionBoxes {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+    }
+    .box-item {
+        border: 2px solid var(--primary-color);
+        border-radius: 12px;
+        padding: 20px;
+        background: #fdfdff;
+        position: relative;
+    }
+    .box-item h3 {
+        margin-top: 0;
+        color: var(--primary-color);
+    }
+    .box-item p {
+        margin: 5px 0;
+        font-size: 14px;
+    }
+    .submission-area {
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px dashed var(--border-color);
+    }
+    .submission-area input[type="text"] {
+        margin-bottom: 10px;
+    }
+    .submission-status-msg {
+        font-size: 13px;
+        margin-top: 10px;
+        display: block;
+    }
+    .submission-status-msg.submitted {
+        color: var(--success-color);
+        font-weight: 600;
+    }
+    .submission-status-msg.not-submitted {
+        color: var(--text-light);
+    }
+    .role-info {
+        text-align: center;
+        margin-bottom: 25px;
         padding: 15px;
         border-radius: 10px;
-        margin-bottom: 15px;
-        background: #fff;
+        background-color: #fff8e1;
+        border: 1px solid #ffecb3;
     }
-    .submission-box h3 {
-        margin-top: 0;
-        margin-bottom: 5px;
-        color: var(--text-color);
-    }
-    .upload-area {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        margin-top: 10px;
-    }
-    .upload-area input[type="file"] {
-        flex-grow: 1;
-        padding: 8px;
-        border: 1px solid #ccc;
-        border-radius: 6px;
-    }
-    .status-msg {
-        margin-top: 10px;
-        padding: 8px;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 500;
-    }
-    .status-msg.success { background: #e8f5e9; color: var(--success-color); }
-    .status-msg.error { background: #ffebee; color: var(--danger-color); }
-    
-    /* Teacher Create Form */
-    #teacher-tools { margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border-color); }
-    #createBoxForm input { width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box;}
   </style>
 </head>
 <body>
 
-  <header>
-    <span>📁 File Submission Portal</span>
-    <div class="header-controls">
-      <button class="btn btn-primary" onclick="window.location.href='secure.html'" style="background-color: #273c75;">
-        ← Public Wall
-      </button>
-    </div>
-  </header>
-
   <div class="container">
-    <div class="content-box">
-      <h2>Document Uploads & Assignments</h2>
-      
-      <div id="role-info">
-          Status: <strong id="connectionStatus">Connecting...</strong> | 
-          Role: <strong id="userRole">Loading...</strong>
-      </div>
+    <button class="btn btn-back" onclick="window.location.href='secure.html'">← Back to Public Wall</button>
+    
+    <h1>📁 Assignment & File Submission Portal</h1>
 
-      <div id="teacher-tools" style="display: none;">
-          <h2>Teacher Tools</h2>
-          <button class="btn btn-success" onclick="toggleCreateForm(true)">+ Create New Submission Box</button>
-          
-          <div id="createBoxForm" style="display: none; margin-top: 15px; border: 1px dashed #b2dfdb; padding: 20px; border-radius: 10px;">
-             <h3>Define New Assignment</h3>
-             <input type="text" id="assignmentTitle" placeholder="Enter Assignment Title (e.g., Final Project Report)">
-             <input type="text" id="dueDate" placeholder="Enter Due Date (e.g., 2025-12-15)">
-             <button class="btn btn-primary" onclick="createSubmissionBox()">Create Box on Blockchain</button>
-             <button class="btn btn-danger" onclick="toggleCreateForm(false)">Cancel</button>
-             <div id="createStatus" class="status-msg"></div>
-          </div>
-      </div>
-      
-      <div id="submission-list">
-          <p id="loading-msg">Loading submission boxes...</p>
-      </div>
-      
+    <div id="wallet-status-info" class="role-info">
+      Please connect your wallet...
     </div>
+
+    <div id="createBoxSection" class="card" style="display:none;">
+      <h2>📝 Create New Assignment Box (Teacher Role Required)</h2>
+      <div class="form-group">
+        <label for="boxTitle">Assignment Title:</label>
+        <input type="text" id="boxTitle" placeholder="e.g., Final Project Submission" />
+      </div>
+      <div class="form-group">
+        <label for="boxDueDate">Due Date:</label>
+        <input type="date" id="boxDueDate" />
+      </div>
+      <button id="createBoxBtn" class="btn btn-primary">Create Box</button>
+      <div id="createBoxStatus" class="status-message" style="display:none;"></div>
+    </div>
+
+    <div class="card">
+        <h2 id="submissionHeader">📦 Available Submission Boxes</h2>
+        <div id="submissionBoxes">
+            <p id="loadingMessage">Loading boxes...</p>
+        </div>
+    </div>
+
   </div>
 
-
   <script>
-    // --- Configuration ---
+    // --- CONTRACT ADDRESSES & ABIs ---
     
-    // ⚠️ AuthManager Contract Address (Used for Role Check) - Consistent with admin.html
-    const AUTH_CONTRACT_ADDRESS = "0xE71c11CF485D9ac41f051b20018CF2d2bD1d2ABe"; 
-    
-    // ⚠️ FileRegistry Contract Address (REPLACE WITH YOUR DEPLOYED FILE REGISTRY ADDRESS)
-    // NOTE: You must deploy the new FileRegistry.sol contract and use its unique address here.
-    const FILE_CONTRACT_ADDRESS = "0xf26085e19d12B856cf10b91E498916C01ebaaB29"; // Placeholder - REPLACE THIS!
-
-    // ABI for AuthManager role check (only need getMyRole)
-    const AUTH_ABI = [
-      "function getMyRole() view returns (string memory)"
+    // The AuthManager address is used to check the user's role
+    const AUTH_MANAGER_ADDRESS = "0xE71c11CF485D9ac41f051b20018CF2d2bD1d2ABe"; 
+    const AUTH_MANAGER_ABI = [
+      "function getMyRole() view returns (string memory)" 
     ];
 
-    // ABI for FileRegistry Contract (for shared data)
-    const FILE_ABI = [
+    // The FileRegistry address is used for creating boxes and submitting files
+    const FILE_REGISTRY_ADDRESS = "0xf26085e19d12B856cf10b91E498916C01ebaaB29"; // Placeholder, replace with your actual deployed FileRegistry address
+    const FILE_REGISTRY_ABI = [
       "function createBox(string calldata title, string calldata dueDate) external",
       "function submitFile(uint256 boxId, string calldata fileName) external",
-      "function getBoxCount() view returns (uint256)",
-      "function submissionBoxes(uint256) view returns (string title, string dueDate, address teacher, uint256 submissionCount)",
-      "function getSubmissionFileName(uint256 boxId, address student) view returns (string memory)",
+      "function getBoxCount() public view returns (uint256)",
+      "function submissionBoxes(uint256) public view returns (string title, string dueDate, address teacher, uint256 submissionCount)",
+      "function getSubmissionFileName(uint256 boxId, address student) public view returns (string memory)",
       "event BoxCreated(uint256 indexed boxId, address indexed teacher, string title)",
       "event FileSubmitted(uint256 indexed boxId, address indexed student, string fileName)"
     ];
 
-    let provider, signer, authContract, fileContract, currentAccount, userRole = 'unknown';
+    let provider, signer, fileRegistryContract, authManagerContract, currentAccount, userRole = 'N/A';
 
-    function el(id){ return document.getElementById(id); }
-    function shortAddr(a) { return a ? `${a.slice(0, 6)}...${a.slice(-4)}` : "N/A"; }
-    
-    // --- Helper Functions ---
-
-    function displayStatus(id, text, type, duration=4000) {
-        const msgEl = el(id);
-        msgEl.textContent = text;
-        msgEl.className = 'status-msg ' + type;
-        if (duration > 0) {
-            setTimeout(() => { msgEl.textContent = ''; msgEl.className = 'status-msg'; }, duration);
-        }
+    // --- UI Helpers ---
+    function el(id) { return document.getElementById(id); }
+    function setStatus(id, text, isError = false) {
+      const elStatus = el(id);
+      elStatus.textContent = text;
+      elStatus.className = 'status-message ' + (isError ? 'status-error' : 'status-success');
+      elStatus.style.display = 'block';
+      setTimeout(() => elStatus.style.display = 'none', 5000);
+    }
+    function shortAddr(a) {
+      return a ? `${a.slice(0, 6)}...${a.slice(-4)}` : "0x0";
     }
 
-    function toggleCreateForm(show) {
-        el('createBoxForm').style.display = show ? 'block' : 'none';
-        if (show) {
-             el('createStatus').textContent = '';
-             el('createStatus').className = 'status-msg';
-        }
-    }
-
-    // --- Core Logic ---
+    // --- Initialization and Role Check ---
 
     async function init() {
       if (typeof window.ethereum === "undefined") {
-        el('connectionStatus').textContent = "MetaMask Not Found.";
-        el('loading-msg').textContent = "Please install MetaMask to proceed.";
+        el('wallet-status-info').textContent = "MetaMask not found. Please install and connect.";
         return;
       }
       
       provider = new ethers.providers.Web3Provider(window.ethereum);
-
+      
       try {
         await provider.send("eth_requestAccounts", []);
         signer = provider.getSigner();
-        currentAccount = await signer.getAddress();
-        el('connectionStatus').innerHTML = `Connected as: <strong>${shortAddr(currentAccount)}</strong>`;
+        currentAccount = await signer.getAddress(); 
         
-        // Setup Contracts
-        authContract = new ethers.Contract(AUTH_CONTRACT_ADDRESS, AUTH_ABI, provider);
-        fileContract = new ethers.Contract(FILE_CONTRACT_ADDRESS, FILE_ABI, signer); 
+        // Initialize contracts
+        authManagerContract = new ethers.Contract(AUTH_MANAGER_ADDRESS, AUTH_MANAGER_ABI, signer);
+        fileRegistryContract = new ethers.Contract(FILE_REGISTRY_ADDRESS, FILE_REGISTRY_ABI, signer);
 
-        // 1. Check User Role
-        // NOTE: If AUTH_CONTRACT_ADDRESS is not deployed or incorrect, this will throw an error.
-        userRole = await authContract.getMyRole();
-        el('userRole').textContent = userRole.charAt(0).toUpperCase() + userRole.slice(1) || 'Student/Unassigned';
+        // Check and display user role
+        userRole = await authManagerContract.getMyRole();
+        el('wallet-status-info').innerHTML = `
+            Connected as: <strong>${shortAddr(currentAccount)}</strong> <br/>
+            Your Role: <strong>${userRole || 'N/A (Default: Member)'}</strong>
+        `;
 
-        // 2. Adjust UI based on Role
+        // Only show "Create Box" if user is a teacher
         if (userRole.toLowerCase() === 'teacher' || userRole.toLowerCase() === 'admin') {
-            el('teacher-tools').style.display = 'block';
+          el('createBoxSection').style.display = 'block';
+          el('createBoxBtn').onclick = handleCreateBox;
         }
 
-        el('loading-msg').textContent = "Loading open assignments...";
+        // Listen for events and load existing boxes
+        fileRegistryContract.on("BoxCreated", () => loadBoxes(fileRegistryContract));
+        fileRegistryContract.on("FileSubmitted", () => loadBoxes(fileRegistryContract));
         
-        // 3. Load Submission Boxes
-        await loadSubmissionBoxes();
-        
-        // Listen for new box creation events (requires signer instance)
-        fileContract.on("BoxCreated", () => loadSubmissionBoxes());
-        fileContract.on("FileSubmitted", () => loadSubmissionBoxes());
+        await loadBoxes(fileRegistryContract);
 
       } catch (err) {
-        console.error("Initialization Error:", err);
-        el('connectionStatus').textContent = "Connection Failed. Check MetaMask/Network/Contract Addresses.";
-        el('userRole').textContent = 'Error';
-        el('loading-msg').textContent = `Error initializing. Check console.`;
+        console.error("Initialization error:", err);
+        el('wallet-status-info').textContent = `Connection/Initialization Error. ${err.message}`;
+        el('loadingMessage').textContent = "Could not load boxes due to connection error.";
       }
     }
 
-    // --- Teacher Functionality (Blockchain write) ---
+    // --- Teacher Functions (Create Box) ---
 
-    async function createSubmissionBox() {
-        if (userRole.toLowerCase() !== 'teacher' && userRole.toLowerCase() !== 'admin') {
-             displayStatus('createStatus', 'Error: Only authorized roles can create submission boxes.', 'error');
-             return;
-        }
+    async function handleCreateBox() {
+      const title = el('boxTitle').value.trim();
+      const dueDate = el('boxDueDate').value.trim();
 
-        const title = el('assignmentTitle').value.trim();
-        const dueDate = el('dueDate').value.trim();
+      if (!title) return setStatus('createBoxStatus', 'Title cannot be empty.', true);
+      if (!dueDate) return setStatus('createBoxStatus', 'Due Date cannot be empty.', true);
 
-        if (!title || !dueDate) {
-            displayStatus('createStatus', 'Error: Title and Due Date are required.', 'error');
-            return;
-        }
+      try {
+        setStatus('createBoxStatus', 'Creating box... Confirm transaction in MetaMask.', false);
+        const tx = await fileRegistryContract.createBox(title, dueDate);
+        await tx.wait();
+        setStatus('createBoxStatus', 'Assignment Box Created Successfully!', false);
+        el('boxTitle').value = '';
+        el('boxDueDate').value = '';
+      } catch (err) {
+        console.error("Create Box Error:", err);
+        setStatus('createBoxStatus', `Creation Failed: ${err.error?.message || err.message}`, true);
+      }
+    }
+
+    // --- Student/User Functions (File Submission) ---
+    
+    // The contract only stores the *name* of the file (a pointer like IPFS CID or just a name).
+    async function handleSubmitFile(boxId) {
+        if (!fileRegistryContract) return alert("Wallet not connected.");
+        const inputId = `fileNameInput-${boxId}`;
+        const statusId = `submissionStatus-${boxId}`;
+        const fileName = el(inputId).value.trim();
+
+        if (!fileName) return setStatus(statusId, 'File name/pointer cannot be empty.', true);
 
         try {
-            displayStatus('createStatus', 'Creating box on blockchain... Confirm transaction in MetaMask.', 'success', 0);
+            setStatus(statusId, 'Submitting file... Confirm transaction in MetaMask.', false);
             
-            // Call the real contract function
-            const tx = await fileContract.createBox(title, dueDate);
-            await tx.wait(); 
-            
-            displayStatus('createStatus', `Box "${title}" created successfully!`, 'success');
-            toggleCreateForm(false);
-            el('assignmentTitle').value = '';
-            el('dueDate').value = '';
-            // UI refresh handled by event listener
-            
+            // NOTE: The modifier 'onlyTeacher' is skipped on the client side in the contract.
+            // A student/user can submit their file if they are registered.
+            const tx = await fileRegistryContract.submitFile(boxId, fileName);
+            await tx.wait();
+
+            setStatus(statusId, `File submitted successfully! Name: ${shortAddr(fileName)}`, false);
+            el(inputId).value = '';
+            // Refresh boxes to show the new submission status
+            await loadBoxes(fileRegistryContract); 
+
         } catch (err) {
-            console.error("Create Box Error:", err);
-            displayStatus('createStatus', `Transaction failed: ${err.error?.message || err.message}`, 'error');
+            console.error(`Submission Error for Box ${boxId}:`, err);
+            setStatus(statusId, `Submission Failed: ${err.error?.message || err.message}`, true);
         }
     }
     
-    // --- Student/All User Functionality (Blockchain read/write) ---
+    // --- Display Boxes ---
 
-    async function loadSubmissionBoxes() {
-        const listEl = el('submission-list');
-        listEl.innerHTML = '';
-        
-        try {
-            const countBigNum = await fileContract.getBoxCount();
-            const count = countBigNum.toNumber();
+    async function loadBoxes(contractInstance) {
+      const boxListEl = el('submissionBoxes');
+      boxListEl.innerHTML = ''; 
+      el('loadingMessage').style.display = 'block';
 
-            if (count === 0) {
-                listEl.innerHTML = '<p id="loading-msg" style="text-align: center; color: var(--text-light);">No submission boxes have been created yet.</p>';
-                return;
-            }
-            
-            const boxes = [];
-            for (let i = 0; i < count; i++) {
-                const boxDetails = await fileContract.submissionBoxes(i);
-                // Check if the current user has submitted
-                const submittedFileName = await fileContract.getSubmissionFileName(i, currentAccount);
+      try {
+        const countBigNum = await contractInstance.getBoxCount();
+        const count = countBigNum.toNumber();
 
-                boxes.push({
-                    id: i,
-                    title: boxDetails[0],
-                    dueDate: boxDetails[1],
-                    teacher: boxDetails[2],
-                    submittedFileName: submittedFileName,
-                    submissionCount: boxDetails[3].toNumber()
-                });
-            }
-
-            boxes.forEach(box => {
-                const hasSubmitted = box.submittedFileName && box.submittedFileName.length > 0;
-                
-                const boxEl = document.createElement('div');
-                boxEl.className = 'submission-box';
-                boxEl.innerHTML = `
-                    <h3>${box.title}</h3>
-                    <p style="font-size: 14px; color: #555;">Due: ${box.dueDate} | Teacher: ${shortAddr(box.teacher)}</p>
-                    <p style="font-size: 14px; color: #555;">Total Submissions: ${box.submissionCount}</p>
-                    <div id="box-content-${box.id}">
-                        ${hasSubmitted ? `
-                            <p class="status-msg success">✅ Submitted: ${box.submittedFileName}</p>
-                        ` : `
-                            <div class="upload-area">
-                                <input type="file" id="file-input-${box.id}" data-box-id="${box.id}" accept=".pdf" />
-                                <button class="btn btn-primary" onclick="submitFile(${box.id})">Upload PDF</button>
-                            </div>
-                            <div id="submit-status-${box.id}" class="status-msg"></div>
-                        `}
-                    </div>
-                `;
-                listEl.appendChild(boxEl);
-            });
-
-        } catch (err) {
-            console.error("Load Boxes Error:", err);
-            listEl.innerHTML = '<p style="text-align: center; color: var(--danger-color);">Error fetching submission boxes from blockchain.</p>';
-        }
-    }
-    
-    async function submitFile(boxId) {
-        const fileInput = el(`file-input-${boxId}`);
-        const statusEl = el(`submit-status-${boxId}`);
-        
-        if (fileInput.files.length === 0) {
-            displayStatus(`submit-status-${boxId}`, 'Please select a PDF file first.', 'error');
+        if (count === 0) {
+            el('loadingMessage').textContent = "No assignment boxes have been created yet.";
             return;
         }
         
-        const file = fileInput.files[0];
-        if (file.type !== 'application/pdf') {
-            displayStatus(`submit-status-${boxId}`, 'Only PDF files are allowed.', 'error');
-            return;
-        }
-        
-        const fileName = file.name;
+        el('loadingMessage').style.display = 'none'; // Hide loading message if boxes exist
 
-        try {
-            displayStatus(`submit-status-${boxId}`, `Submitting file metadata for "${fileName}"... Confirm transaction in MetaMask.`, 'success', 0);
+        // Load boxes in reverse order to show the newest first
+        for (let i = count - 1; i >= 0; i--) {
+            // Retrieve box details (title, dueDate, teacher, submissionCount)
+            const box = await contractInstance.submissionBoxes(i);
             
-            // NOTE: In a production dApp, you would upload the file itself 
-            // to IPFS/Arweave here, get a CID, and send the CID to the contract. 
-            // Here, we just send the file name as a simulation of that metadata.
-            
-            const tx = await fileContract.submitFile(boxId, fileName);
-            await tx.wait(); 
+            // Retrieve student's submission status for the current box
+            let submittedFileName = "N/A";
+            let submissionHtml = '';
+            let submissionStatus = '';
 
-            displayStatus(`submit-status-${boxId}`, `File metadata submitted on-chain! Filename: ${fileName}`, 'success');
-            // UI refresh handled by event listener
+            // Check if the current account has submitted a file
+            if (currentAccount) {
+                 submittedFileName = await contractInstance.getSubmissionFileName(i, currentAccount);
+            }
             
-        } catch (err) {
-            console.error("File submission Error:", err);
-            displayStatus(`submit-status-${boxId}`, `Transaction failed: ${err.error?.message || err.message}`, 'error');
+            const isSubmitted = submittedFileName && submittedFileName.length > 0;
+            
+            if (isSubmitted) {
+                submissionStatus = `<span class="submission-status-msg submitted">Submitted! File: <strong>${submittedFileName}</strong></span>`;
+                submissionHtml = submissionStatus;
+            } else {
+                // If not submitted (or if the user is the teacher), allow submission
+                if (userRole.toLowerCase() !== 'teacher' && userRole.toLowerCase() !== 'admin') {
+                     submissionStatus = `<span id="submissionStatus-${i}" class="submission-status-msg not-submitted">Not submitted yet.</span>`;
+                     submissionHtml = `
+                        <div class="submission-area">
+                            <h4>Submit Your File</h4>
+                            <input type="text" id="fileNameInput-${i}" placeholder="Enter file CID or name (e.g., Qm...)" />
+                            <button class="btn btn-success" onclick="handleSubmitFile(${i})">Submit File</button>
+                            ${submissionStatus}
+                        </div>
+                    `;
+                } else {
+                    submissionHtml = `<div class="submission-area">
+                        <span class="submission-status-msg submitted">Teacher's View: ${box.submissionCount.toNumber()} submission(s) received.</span>
+                        <p style="font-size:12px; margin-top:5px; color:#555;">Teacher's can't submit to their own boxes. Use an Admin/Student account to test submission.</p>
+                    </div>`;
+                }
+            }
+
+
+            const boxElement = document.createElement("div");
+            boxElement.className = "box-item";
+            boxElement.innerHTML = `
+                <h3>${box.title} (Box ID: ${i})</h3>
+                <p><strong>Due Date:</strong> ${box.dueDate}</p>
+                <p><strong>Created By:</strong> ${shortAddr(box.teacher)}</p>
+                <p><strong>Submissions:</strong> ${box.submissionCount.toNumber()}</p>
+                ${submissionHtml}
+            `;
+            boxListEl.appendChild(boxElement);
         }
+
+      } catch (err) {
+        console.error("Load boxes error:", err);
+        el('loadingMessage').textContent = `Error loading boxes: ${err.message}`;
+        el('loadingMessage').style.display = 'block';
+      }
     }
+
 
     window.onload = init;
 
-    // Add event listeners for MetaMask account/network changes
+    // Reload on account/network change
     if (typeof window.ethereum !== 'undefined') {
         window.ethereum.on('accountsChanged', () => window.location.reload());
         window.ethereum.on('chainChanged', () => window.location.reload());
