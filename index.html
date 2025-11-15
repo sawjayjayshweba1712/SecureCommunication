@@ -72,10 +72,10 @@
   </div>
 
   <script>
-
-    const CONTRACT_ADDRESS = "0xd1968a1b2250233500D4dd3967012928e87Ef66c";
+    // ⚠️ PASTE YOUR *NEW* AuthManager CONTRACT ADDRESS HERE
+    const CONTRACT_ADDRESS = "0xAF83CC47bE66d4BE1ea74F1f23e4452fa3c76F4b";
     
-    // MODIFIED ABI: Removed old 'authenticate' and 'logAccess', added new secure functions
+    // MODIFIED ABI: 'authenticateWithSignature' is now a view function
     const CONTRACT_ABI = [
       "function register() public",
       "function deactivateAccount() public",
@@ -85,9 +85,10 @@
       
       // NEW FUNCTIONS FOR SECURE AUTH (Challenge-Response)
       "function getNonce(address user) external view returns (uint256)", 
-      "function authenticateWithSignature(bytes calldata signature) external", 
+      // CRITICAL ABI FIX: Now takes signature AND nonce, and is a view function
+      "function authenticateWithSignature(bytes calldata signature, uint256 nonce) external view returns (bool)", 
       "event UserAccess(address indexed user, uint256 timestamp)",
-      "event Authenticated(address indexed user, uint256 timestamp, uint256 nonce)" // New event for login success
+      "event Authenticated(address indexed user, uint256 timestamp, uint256 nonce)"
     ];
 
     let provider, signer, contract, currentAccount;
@@ -109,45 +110,59 @@
     
     async function registerUser(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try{const tx=await contract.register();showMsg('registerMessage','Confirm registration in MetaMask...');await tx.wait();showMsg('registerMessage','Registered successfully!');}catch(e){showMsg('registerMessage', e.error?.message || e.message || 'Registration failed.',false);}}
     
-    // NEW SECURE AUTHENTICATION FUNCTION (Challenge-Response)
-// NEW SECURE AUTHENTICATION FUNCTION (Challenge-Response - Hash Alignment Fix)
-async function authenticateUser(){
-  if(!contract){showMsg('authMessage','Connect wallet first',false);return;}
-  
-  try {
-    // --- STEP 1: Get the current nonce/challenge from the contract ---
-    const nonceBigNum = await contract.getNonce(currentAccount);
-    const nonce = nonceBigNum.toNumber();
+    // FINAL SECURE AUTHENTICATION FUNCTION (Single Signature, No Transaction)
+    async function authenticateUser(){
+      if(!contract){showMsg('authMessage','Connect wallet first',false);return;}
+      
+      try {
+        // --- STEP 1: Get the current nonce/challenge from the contract ---
+        const nonceBigNum = await contract.getNonce(currentAccount);
+        const nonce = nonceBigNum.toNumber();
 
-    // --- STEP 2: Create the exact challenge message string (human-readable) ---
-    // The contract logic is now perfectly aligned to hash this specific string.
-    const challengeMessage = `UniversityPortalLogin:${nonce}`;
-    
-    // --- STEP 3: Sign the message with the current wallet (MetaMask prompt) ---
-    showMsg('authMessage',`Confirm the login signature in MetaMask. Challenge: ${challengeMessage}`, true);
-    
-    // Ethers' signer.signMessage handles the EIP-191 prefixing perfectly for this string.
-    const signature = await signer.signMessage(challengeMessage); 
+        // --- STEP 2: Create the exact challenge message string (human-readable) ---
+        const challengeMessage = `UniversityPortalLogin:${nonce}`;
+        
+        // --- STEP 3: Sign the message with the current wallet (MetaMask prompt) ---
+        showMsg('authMessage',`Confirm the login signature in MetaMask. Challenge: ${challengeMessage}`, true);
+        const signature = await signer.signMessage(challengeMessage); 
 
-    // --- STEP 4: Send the signature back to the contract for verification ---
-    showMsg('authMessage','Signature confirmed. Sending to blockchain for verification...', true);
-    
-    const tx = await contract.authenticateWithSignature(signature);
-    await tx.wait(); 
-    
-    showMsg('authMessage','✅ Authentication successful! Access granted.', true);
-    setTimeout(()=>window.location.href='dashboard.html', 1500); 
-    
-  } catch (e) {
-      console.error("Authentication Error:", e);
-      const errorMsg = e.error?.message || e.message || 'Authentication failed. Check console for details.';
-      if (errorMsg.includes('User denied transaction signature')) {
-         showMsg('authMessage', 'Login attempt cancelled by user.', false);
-      } else {
-         showMsg('authMessage', `Authentication Failed: ${errorMsg}`, false);
+        // --- STEP 4: Send the signature and nonce to the contract for VERIFICATION (READ-ONLY) ---
+        showMsg('authMessage','Signature confirmed. Verifying credentials...', true);
+        
+        // Use the provider instance for READ-ONLY calls. We use callStatic to simulate the transaction.
+        const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+        
+        // Pass signature AND nonce, and explicitly set the caller address ('from') for msg.sender in the contract
+        const isAuthenticated = await readOnlyContract.callStatic.authenticateWithSignature(
+            signature, 
+            nonce, 
+            { from: currentAccount }
+        );
+        
+        if (isAuthenticated) {
+            // Since the contract no longer logs access, we should call a separate logging function 
+            // if we want to track logins (this would be the transaction popup now).
+            // For a truly single pop-up experience, we skip logging and trust the signature verification.
+            
+            showMsg('authMessage','✅ Authentication successful! Access granted.', true);
+            setTimeout(()=>window.location.href='dashboard.html', 1500); 
+        } else {
+            // This path should not be hit if the contract reverted with an error, 
+            // but is a fallback for safety.
+            showMsg('authMessage','Authentication Failed: Signature verified but nonce was invalid.', false);
+        }
+
+      } catch (e) {
+          console.error("Authentication Error:", e);
+          const errorMsg = e.error?.message || e.message || 'Authentication failed. Check console for details.';
+          if (errorMsg.includes('User denied transaction signature')) {
+             showMsg('authMessage', 'Login attempt cancelled by user.', false);
+          } else {
+             // The contract error message is usually embedded here: "execution reverted: Authentication Failed: Invalid signature or message"
+             showMsg('authMessage', `Authentication Failed: ${errorMsg}`, false);
+          }
       }
-  }
-}
+    }
     
     async function deactivateAccount(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try { const tx=await contract.deactivateAccount(); showMsg('registerMessage', 'Confirm deactivation in MetaMask...'); await tx.wait(); showMsg('registerMessage','Account deactivated successfully.');} catch(e) { showMsg('registerMessage', e.error?.message || e.message || 'Deactivation failed.', false); }}
     
