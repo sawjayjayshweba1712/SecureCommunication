@@ -173,7 +173,7 @@
       white-space: pre-wrap; /* Preserves line breaks */
       padding-right: 60px; /* Space for delete button */
     }
-     /* NEW: Delete Button Style */
+     /* Delete Button Style */
     .delete-btn {
       position: absolute;
       top: 15px;
@@ -186,6 +186,52 @@
       padding: 30px;
       color: var(--text-light);
     }
+    
+    /* NEW CSS for Comments and Reactions */
+    .post-comments-section {
+      margin-top: 15px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--border-color);
+    }
+    .comment-list {
+      background: #fcfcfc;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      max-height: 150px; /* Limit height for long comment threads */
+      overflow-y: auto;
+    }
+    .comment-item {
+      padding: 5px 0;
+      font-size: 14px;
+      line-height: 1.4;
+      word-wrap: break-word;
+    }
+    .comment-composer {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .comment-composer input {
+      flex-grow: 1;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-family: "Poppins", sans-serif;
+    }
+    .btn-reaction {
+      padding: 5px 10px !important; 
+      font-size: 13px !important;
+      margin-top: 10px;
+    }
+    .status-message {
+      font-size: 12px;
+      margin-top: 5px;
+      display: block;
+      font-weight: 500;
+    }
+    .status-message.success { color: var(--success-color); }
+    .status-message.error { color: var(--danger-color); }
 
     footer {
       text-align: center;
@@ -249,19 +295,24 @@
       window.location.href = "index.html";
     }
 
-    // --- BLOCKCHAIN WALL (Ethers v5 with Delete Functionality) ---
+    // --- BLOCKCHAIN WALL (Ethers v5 with Comments/Reactions) ---
     
     // ⚠️ PASTE YOUR *NEW RE-DEPLOYED* PublicWall CONTRACT ADDRESS HERE
-    const CONTRACT_ADDRESS = "0x59f9A74a496b9c845d20e88aD33a6fc8d49dC30d"; 
+    const CONTRACT_ADDRESS = "0xF25AB40f6648CeeDcf1166aC19634DcBBE2B0ac1"; // REPLACE THIS ADDRESS!
 
-    // MODIFIED: Updated ABI with deletePost and modified getPost
+    // MODIFIED: Updated ABI with new functions and events for comments/reactions
     const ABI = [
       "function addPost(string calldata _text) external",
-      "function deletePost(uint256 index) external", // Allows deleting posts
+      "function deletePost(uint256 index) external",
+      "function addComment(uint256 index, string calldata _text) external", // NEW
+      "function toggleReaction(uint256 index) external", // NEW
       "function getPostCount() view returns (uint256)",
-      "function getPost(uint256 index) view returns (address author, string memory text, uint256 timestamp, bool isDeleted)", // Returns deletion status
+      // NOTE: This complex return type maps to the Solidity getPostDetails return
+      "function getPostDetails(uint256 index) view returns (address author, string memory text, uint256 timestamp, bool isDeleted, tuple(address author, string text, uint256 timestamp)[] comments, uint256 reactionCount)", 
       "event PostCreated(uint256 indexed index, address indexed author, uint256 timestamp, string text)",
-      "event PostDeleted(uint256 indexed index, address indexed author)" // Event for deletion
+      "event PostDeleted(uint256 indexed index, address indexed author)",
+      "event CommentAdded(uint256 indexed postIndex, address indexed author, uint256 timestamp, string text)", // NEW
+      "event ReactionToggled(uint256 indexed postIndex, address indexed user, bool added)" // NEW
     ];
 
     let provider, signer, contract, currentAccount; // currentAccount needed for delete check
@@ -318,6 +369,8 @@
         // Listen for events and RELOAD the list for simplicity
         contract.on("PostCreated", () => loadPosts(contract));
         contract.on("PostDeleted", () => loadPosts(contract));
+        contract.on("CommentAdded", () => loadPosts(contract));    // NEW
+        contract.on("ReactionToggled", () => loadPosts(contract)); // NEW
 
         // Refresh posts on connect to potentially show delete buttons
         await loadPosts(contract); 
@@ -364,13 +417,17 @@
         const postsToRender = []; // Collect posts before rendering
 
         for (let i = count - 1; i >= 0; i--) {
-          const [author, text, ts, isDeleted] = await contractInstance.getPost(i);
+          // CHANGE: Call the new, detailed view function
+          const [author, text, ts, isDeleted, comments, reactionCount] = await contractInstance.getPostDetails(i);
+          
           if (!isDeleted) {
               postsToRender.push({ 
                   index: i, 
                   author, 
                   text, 
-                  timestamp: ts.toNumber() 
+                  timestamp: ts.toNumber(),
+                  comments,         // NEW: Pass the comments array
+                  reactionCount: reactionCount.toNumber() // NEW: Pass the count
               });
               visiblePostCount++;
           }
@@ -395,7 +452,8 @@
       }
     }
 
-    function appendPostToUI({ index, author, text, timestamp }) {
+    // MODIFIED: Updated to accept comments and reactionCount
+    function appendPostToUI({ index, author, text, timestamp, comments, reactionCount }) {
       const d = new Date(timestamp * 1000);
       const el = document.createElement("div");
       el.className = "post-item";
@@ -407,12 +465,38 @@
         deleteButtonHtml = `<button class="btn btn-danger delete-btn" onclick="handleDelete(${index})">Delete</button>`;
       }
 
+      // Generate HTML for comments
+      let commentsHtml = comments.map(c => {
+          const commentDate = new Date(c.timestamp.toNumber() * 1000).toLocaleString();
+          return `<div class="comment-item">
+              <strong>${shortAddr(c.author)}:</strong> ${escapeHtml(c.text)}
+              <span style="float: right; color: var(--text-light); font-size: 11px;">${commentDate}</span>
+          </div>`;
+      }).join('');
+
+
       el.innerHTML = `
         ${deleteButtonHtml} 
         <div class="post-header">
           <strong>${shortAddr(author)}</strong> • ${d.toLocaleString()}
         </div>
-        <div class="post-content">${escapeHtml(text)}</div>`;
+        <div class="post-content">${escapeHtml(text)}</div>
+
+        <button class="btn btn-primary btn-reaction" onclick="handleReaction(${index})">
+          👍 React (${reactionCount})
+        </button>
+
+        <div class="post-comments-section">
+            <h4 style="margin-top: 15px; margin-bottom: 5px; color: var(--primary-color);">Comments (${comments.length})</h4>
+            <div class="comment-list">
+                ${commentsHtml || '<div class="comment-item" style="color:var(--text-light); text-align: center;">No comments yet.</div>'}
+            </div>
+            <div class="comment-composer">
+                <input type="text" id="comment-input-${index}" placeholder="Add a comment..." />
+                <button class="btn btn-primary" onclick="handleComment(${index})">Comment</button>
+            </div>
+            <span id="comment-status-${index}" class="status-message"></span>
+        </div>`;
       postList.appendChild(el);
     }
     
@@ -442,6 +526,65 @@
         console.error("Delete error:", err);
         setPostingStatus(`Delete Failed: ${err.reason || err.message}`, "error");
         setTimeout(() => setPostingStatus("", null), 5000);
+      }
+    }
+
+    // NEW: Function to handle posting a comment
+    async function handleComment(index) {
+      if (!contract) return alert("Please connect your wallet first.");
+      const inputEl = document.getElementById(`comment-input-${index}`);
+      const statusEl = document.getElementById(`comment-status-${index}`);
+      const comment = inputEl.value.trim();
+      
+      if (!comment) {
+        statusEl.textContent = "Comment cannot be empty.";
+        statusEl.className = 'error';
+        setTimeout(() => statusEl.textContent = "", 3000);
+        return;
+      }
+
+      try {
+        statusEl.textContent = "Sending comment transaction... Confirm in MetaMask.";
+        statusEl.className = 'success';
+        
+        const tx = await contract.addComment(index, comment);
+        await tx.wait();
+        
+        statusEl.textContent = "Comment posted successfully! Refreshing...";
+        inputEl.value = ""; 
+        setTimeout(() => statusEl.textContent = "", 3000);
+        // UI update is handled by the event listener (CommentAdded)
+        
+      } catch (err) {
+        console.error("Comment error:", err);
+        statusEl.textContent = `Comment Failed: ${err.error?.message || err.message}`;
+        statusEl.className = 'error';
+        setTimeout(() => statusEl.textContent = "", 5000);
+      }
+    }
+
+    // NEW: Function to handle toggling a reaction
+    async function handleReaction(index) {
+      if (!contract) return alert("Please connect your wallet first.");
+      const postEl = document.getElementById(`post-${index}`);
+      const reactionButton = postEl.querySelector('.btn-reaction');
+      
+      try {
+        const confirmMsg = "Confirm transaction to toggle your reaction (Like/Unlike)? This will cost gas.";
+        if (!confirm(confirmMsg)) return;
+        
+        // Temporarily indicate action
+        reactionButton.textContent = "Processing...";
+
+        const tx = await contract.toggleReaction(index);
+        await tx.wait();
+        
+        // UI update handled by the event listener (ReactionToggled)
+        
+      } catch (err) {
+        console.error("Reaction error:", err);
+        alert(`Reaction Failed: ${err.error?.message || err.message}`);
+        loadPosts(contract); // Reload to reset button text
       }
     }
 
