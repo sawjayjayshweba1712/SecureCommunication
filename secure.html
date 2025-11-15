@@ -340,7 +340,6 @@
     }
 
     // --- BLOCKCHAIN SETUP ---
-    // NOTE: This contract address is for the PublicWall.sol, which is separate from AuthManager.sol
     const CONTRACT_ADDRESS = "0xf6a78C96484CAe38412aad54fDcFf13145de4CA4"; 
     
     const ABI = [
@@ -367,10 +366,9 @@
     const noPosts = document.getElementById("no-posts"); 
     const fabButton = document.getElementById("fabButton");
 
-    // --- CORE LOGIC (FIXED) ---
+    // --- CORE LOGIC ---
 
     function togglePostComposer(show) {
-        if (!currentAccount) return alert("Please connect your wallet to post.");
         if (show) {
             postComposer.style.display = "block";
             postInput.focus();
@@ -380,86 +378,72 @@
             setPostingStatus("", null);
         }
     }
-    
-    // Function to check connection status and redirect if necessary
-    async function checkConnectionAndAuth() {
-        if (typeof window.ethereum === "undefined") {
-            connectButton.innerText = "Install MetaMask";
-            connectButton.onclick = () => window.open("https://metamask.io/");
-            walletStatus.innerHTML = "<strong>MetaMask Not Found</strong>";
-            if(noPosts) noPosts.textContent = "Please install MetaMask to use the Public Wall.";
-            return false;
-        }
 
-        try {
-            provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-            // Request accounts without session check to ensure key control is confirmed.
-            await provider.send("eth_requestAccounts", []);
-            signer = provider.getSigner();
-            currentAccount = await signer.getAddress(); 
-            
-            // Wallet is connected, proceed to load posts and contract
-            walletStatus.innerHTML = `Connected: <strong>${shortAddr(currentAccount)}</strong>`;
-            connectButton.style.display = "none";
-            fabButton.style.display = "block"; 
-            sessionStorage.setItem('isWalletConnected', 'true');
-            
-            contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-
-            // Attach listeners and load posts
-            contract.on("PostCreated", () => loadPosts(contract));
-            contract.on("PostDeleted", () => loadPosts(contract));
-            contract.on("CommentAdded", () => loadPosts(contract)); 
-            contract.on("ReactionToggled", () => loadPosts(contract)); 
-
-            // Load posts with the signed contract instance
-            await loadPosts(contract); 
-            return true;
-            
-        } catch (err) {
-            console.error("Connection error:", err);
-            walletStatus.innerHTML = "<strong>Connection Failed</strong>";
-            sessionStorage.removeItem('isWalletConnected');
-            currentAccount = null; 
-            fabButton.style.display = "none"; 
-            
-            // CRITICAL REDIRECT: If connection fails, redirect to login page
-            alert("Connection to wallet failed. Please log in again.");
-            window.location.href = "index.html";
-            return false;
-        }
-    }
-    
-    // Simplified init function to start the check
     async function init() {
-       // Load initial posts using read-only provider first for public view
-       try {
-         // Initialize read-only provider
-         provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-         const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
-         await loadPosts(readOnlyContract);
-       } catch (e) {
-         console.error("Error loading read-only contract", e);
-         if(noPosts) noPosts.textContent = "Error loading contract. Is the address correct?";
-       }
-       
-       connectButton.onclick = checkConnectionAndAuth;
-       
-       // If the user was connected (from session storage), try to connect immediately
-       if (sessionStorage.getItem('isWalletConnected') === 'true') {
-         checkConnectionAndAuth();
-       } else {
-         if(noPosts && postList.children.length === 0) {
-             noPosts.textContent = "Please connect your wallet to view and interact with the wall.";
-         }
-       }
-    }
-    
-    // The original connectWallet is now integrated into checkConnectionAndAuth
-    async function connectWallet() {
-        checkConnectionAndAuth();
+      if (typeof window.ethereum === "undefined") {
+        connectButton.innerText = "Install MetaMask";
+        connectButton.onclick = () => window.open("https://metamask.io/");
+        walletStatus.innerHTML = "<strong>MetaMask Not Found</strong>";
+        if(noPosts) noPosts.textContent = "Please install MetaMask to use the Public Wall.";
+        return;
+      }
+      
+      // FIX: Use "any" network argument to prevent Ethers v5 failure on Sepolia's missing ENS resolver.
+      try {
+        provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+      } catch (e) {
+        console.error("Provider creation failed:", e);
+        if(noPosts) noPosts.textContent = "Error setting up provider. Ensure MetaMask is ready.";
+        return;
+      }
+
+      connectButton.onclick = connectWallet;
+      
+      // Load initial posts using read-only provider
+      try {
+        const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+        await loadPosts(readOnlyContract);
+      } catch (e) {
+        console.error("Error loading read-only contract", e);
+        if(noPosts) noPosts.textContent = "Error loading contract. Is the address correct?";
+      }
+
+      if (sessionStorage.getItem('isWalletConnected') === 'true') {
+        connectWallet();
+      }
     }
 
+    async function connectWallet() {
+      if (!provider) return;
+
+      try {
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        currentAccount = await signer.getAddress(); 
+        
+        walletStatus.innerHTML = `Connected: <strong>${shortAddr(currentAccount)}</strong>`;
+        connectButton.style.display = "none";
+        fabButton.style.display = "block"; 
+        sessionStorage.setItem('isWalletConnected', 'true');
+        
+        contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+        // Listeners must be attached to the signed contract instance
+        contract.on("PostCreated", () => loadPosts(contract));
+        contract.on("PostDeleted", () => loadPosts(contract));
+        contract.on("CommentAdded", () => loadPosts(contract)); 
+        contract.on("ReactionToggled", () => loadPosts(contract)); 
+
+        await loadPosts(contract); 
+
+      } catch (err) {
+        console.error("Connection error:", err);
+        walletStatus.innerHTML = "<strong>Connection Failed</strong>";
+        sessionStorage.removeItem('isWalletConnected');
+        currentAccount = null; 
+        fabButton.style.display = "none"; 
+      }
+    }
 
     postButton.addEventListener("click", async () => {
       if (!contract) return alert("Please connect your wallet first.");
@@ -502,7 +486,6 @@
 
         // Fetching post details
         for (let i = count - 1; i >= 0; i--) {
-          [cite_start]// Destructure post details [cite: 25]
           const [author, text, ts, isDeleted, comments, reactionCount] = await contractInstance.getPostDetails(i);
           
           if (!isDeleted) {
@@ -677,7 +660,6 @@
 
      if (typeof window.ethereum !== 'undefined') {
         window.ethereum.on('accountsChanged', (accounts) => {
-             // If accounts change, reload to re-run authentication check
              window.location.reload(); 
              if(accounts.length === 0) {
                  sessionStorage.removeItem('isWalletConnected');
