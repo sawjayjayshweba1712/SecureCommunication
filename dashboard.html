@@ -1,183 +1,98 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8" /> 
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Blockchain Auth - Home</title>
-  <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <title>Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background:#f7f9fc; }
-    .card { max-width:700px; margin:auto; background:#fff; padding:28px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
-    h1 { text-align:center; color:#222; }
-    h3 { margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
-    .row { margin:12px 0; display:flex; gap:10px; align-items:center; }
-    button { padding:10px 14px; border:0; border-radius:6px; cursor:pointer; font-weight: 600; }
-    #connectButton { background:#1e88e5; color:#fff; }
-    #registerButton { background:#43a047; color:#fff; }
-    #authButton { background:#ffb300; color:#222; }
-    #deactivateButton { background:#ef5350; color:#fff; }
-    #rotateButton { background:#ff9800; color:#fff; }
-    .status { padding:10px; border-radius:6px; margin-bottom:10px; }
-    .ok { background:#e8f5e9; color:#1b5e20; border:1px solid #c8e6c9; }
-    .err { background:#ffebee; color:#b71c1c; border:1px solid #ffcdd2; }
-    input[type="text"] { width:100%;padding:8px;border-radius:6px;border:1px solid #ccc; box-sizing: border-box;}
+    body { font-family:Arial,sans-serif;background:#f2f6fb;padding:40px; }
+    .wrap { max-width:800px;margin:auto;background:#fff;padding:28px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.06); }
+    h1 { margin-bottom:8px; color: #273c75; } 
+    button { padding:10px 14px;border-radius:8px;border:0;background:#1e88e5;color:#fff;cursor:pointer; font-size: 14px; margin-right: 10px;}
+    button:hover { background: #1565c0; }
+    .field { background:#f8fafc;padding:12px 15px; border-radius:8px; margin-bottom: 12px; border-left: 4px solid #40739e; }
+    .field b { color: #273c75; }
+    #addr { font-family: monospace; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Privacy-Preserving Auth — Portal</h1>
-
-    <div id="status" class="status err">Status: Wallet Disconnected.</div>
-    <div class="row">
-      <div style="flex:1;">Current Account: <strong id="currentAccount">N/A</strong></div>
-      <div>Network: <strong id="networkName">N/A</strong></div>
-    </div>
-
-    <div class="row">
-      <button id="connectButton" onclick="connectWallet()">Connect MetaMask</button>
-      <button id="disconnectButton" onclick="disconnect()" style="display:none;">Disconnect</button>
-    </div>
-
-    <h3>Registration & Authentication</h3>
-    <div class="row">
-      <button id="registerButton" onclick="registerUser()">Register</button>
-      <button id="authButton" onclick="authenticateUser()">Authenticate (Login)</button>
-      <button id="deactivateButton" onclick="deactivateAccount()">Deactivate My Account</button>
-    </div>
-    <div id="registerMessage" class="status" style="display:none;"></div>
-    <div id="authMessage" class="status" style="display:none;"></div>
-
-    <h3>DID Key Rotation</h3>
-    <div>
-      <label>New Wallet Address (Future DID Key):</label>
-      <input id="newWalletAddress" type="text" placeholder="0x..." style="margin-bottom: 10px;">
-      <div class="row">
-        <button id="rotateButton" onclick="updateDID()" style="flex:1;">Rotate DID Key</button>
-      </div>
-      <p style="font-size: 0.85em; color: #555; margin-top: 5px;">
-        Warning: This transfers your registration and all data to the new address.
-        You must confirm this transaction using your *current* wallet.
-      </p>
-      <div id="rotateMessage" class="status" style="display:none; margin-top: 10px;"></div>
-    </div>
-
-
-    <h3>Profile</h3>
-    <div>
-      <label>Profile CID (IPFS) or public pointer</label>
-      <input id="profileCid" type="text" placeholder="Qm..." style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;">
-      <div class="row"><button onclick="setProfileCid()">Save Profile CID</button></div>
-      <div id="profileMessage" class="status" style="display:none;"></div>
+  <div class="wrap">
+    <h1>Secure Dashboard</h1>
+    <p>Your on-chain account information:</p>
+    <div class="field"><b>Wallet Address:</b> <span id="addr">Loading...</span></div>
+    <div class="field"><b>ETH Balance:</b> <span id="balance">Loading...</span></div>
+    <div class="field"><b>Registration Status:</b> <span id="registered">Loading...</span></div>
+    <div class="field"><b>Assigned Role:</b> <span id="role">Loading...</span></div>
+    <div class="field"><b>Profile Pointer/CID:</b> <span id="profileCid">Loading...</span></div>
+    <div style="margin-top:25px;">
+      <button onclick="goBack()">← Back to Login</button>
+      <button onclick="goNext()" style="background-color: #43a047;">Go to Public Wall →</button>
     </div>
   </div>
 
   <script>
     // ⚠️ PASTE YOUR *NEW* AuthManager CONTRACT ADDRESS HERE
-    const CONTRACT_ADDRESS = "0xE71c11CF485D9ac41f051b20018CF2d2bD1d2ABe";
+    const contractAddress="0x0C04CccB10696083D9D10Da88251a7f512763227";
     
-    // MODIFIED: Added updateDID to the ABI
-    const CONTRACT_ABI = [
-      "function register() public",
-      "function deactivateAccount() public",
-      "function authenticate(address user) external view returns (bool)",
-      "function setProfileCID(string calldata cid) external",
-      "function isRegistered(address user) external view returns (bool)",
-      "function logAccess() external", 
-      "function updateDID(address newWallet) external", // NEW function
-      "event UserAccess(address indexed user, uint256 timestamp)"
+    // ABI remains the same for view functions used here
+    const contractABI=[
+      "function isRegistered(address user) view returns (bool)", 
+      "function getRole(address user) view returns (string memory)",
+      "function getProfileCID(address user) view returns (string memory)"
     ];
-
-    let provider, signer, contract, currentAccount;
-
-    function el(id){ return document.getElementById(id); }
-    function showStatus(t, ok=true){ el('status').textContent='Status: '+t; el('status').className='status '+(ok?'ok':'err'); }
-    function showMsg(id,t,ok=true){ const m=el(id); m.style.display='block'; m.textContent=t; m.className='status '+(ok?'ok':'err'); setTimeout(()=>m.style.display='none',5000); }
-
-    async function connectWallet(){
-      if(!window.ethereum){showStatus('MetaMask not installed',false);return;}
-      provider=new ethers.providers.Web3Provider(window.ethereum);await provider.send("eth_requestAccounts",[]);
-      signer=provider.getSigner();currentAccount=await signer.getAddress();
-      contract=new ethers.Contract(CONTRACT_ADDRESS,CONTRACT_ABI,signer);
-      const n=await provider.getNetwork();el('currentAccount').textContent=currentAccount;el('networkName').textContent=n.name;showStatus('Connected',true);
-      el('connectButton').style.display='none';el('disconnectButton').style.display='inline-block';
-    }
     
-    function disconnect(){provider=null;signer=null;contract=null;currentAccount=null;el('currentAccount').textContent='N/A';el('networkName').textContent='N/A';showStatus('Disconnected',false);el('connectButton').style.display='inline-block';el('disconnectButton').style.display='none';}
-    
-    async function registerUser(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try{const tx=await contract.register();showMsg('registerMessage','Confirm registration in MetaMask...');await tx.wait();showMsg('registerMessage','Registered successfully!');}catch(e){showMsg('registerMessage', e.error?.message || e.message || 'Registration failed.',false);}}
-    
-    async function authenticateUser(){
-      if(!contract){showMsg('authMessage','Connect wallet first',false);return;}
+    async function load(){
+      if (typeof window.ethereum === "undefined") {
+         alert("MetaMask is not installed!");
+         return;
+      }
+      
+      const provider=new ethers.providers.Web3Provider(window.ethereum);
       
       try {
-        const isAuth = await contract.authenticate(currentAccount);
+        await provider.send("eth_requestAccounts",[]); // Ensure wallet is connected
+        const signer=provider.getSigner();
+        const addr=await signer.getAddress();
+        document.getElementById('addr').textContent=addr;
         
-        if(isAuth){
-          showMsg('authMessage','Authenticated! Logging your access...', true);
-          const tx = await contract.logAccess(); 
-          await tx.wait(); 
-          
-          showMsg('authMessage','Access logged! Redirecting to dashboard...', true);
-          setTimeout(()=>window.location.href='dashboard.html', 1500); 
+        const bal=await provider.getBalance(addr);
+        // Format balance more nicely
+        document.getElementById('balance').textContent=ethers.utils.formatEther(bal).substring(0, 8) + " ETH"; 
         
-        } else {
-          showMsg('authMessage','Authentication Failed: User not registered.',false);
-        }
-      } catch (e) {
-          console.error("Authentication or Logging Error:", e);
-          showMsg('authMessage', e.error?.message || e.message || 'Authentication or logging failed.', false);
+        const c=new ethers.Contract(contractAddress,contractABI,provider); // Use provider for reads
+        
+        const r=await c.isRegistered(addr);
+        document.getElementById('registered').textContent=r ? '✅ Registered' : '❌ Not Registered';
+        
+        const role=await c.getRole(addr);
+        document.getElementById('role').textContent=role || 'N/A';
+        
+        const cid=await c.getProfileCID(addr);
+        document.getElementById('profileCid').textContent=cid || 'N/A';
+        
+      } catch(e) {
+          console.error("Error loading dashboard data:", e);
+          // Display error to user
+          document.getElementById('addr').textContent = "Error loading data";
+          document.getElementById('balance').textContent = "Error";
+          document.getElementById('registered').textContent = "Error";
+          document.getElementById('role').textContent = "Error";
+          document.getElementById('profileCid').textContent = "Error";
+          alert("Could not load dashboard data. Please ensure your wallet is connected to the correct network and the contract address is correct.");
       }
     }
     
-    async function deactivateAccount(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try { const tx=await contract.deactivateAccount(); showMsg('registerMessage', 'Confirm deactivation in MetaMask...'); await tx.wait(); showMsg('registerMessage','Account deactivated successfully.');} catch(e) { showMsg('registerMessage', e.error?.message || e.message || 'Deactivation failed.', false); }}
+    function goBack(){window.location.href="index.html";}
+    function goNext(){window.location.href="secure.html";}
     
-    async function setProfileCid(){if(!contract){showMsg('profileMessage','Connect wallet first',false);return;}const cid=el('profileCid').value.trim();if(!cid){showMsg('profileMessage','Please enter a Profile CID or pointer.',false);return;}try{const tx=await contract.setProfileCID(cid); showMsg('profileMessage', 'Confirm saving profile CID in MetaMask...'); await tx.wait();showMsg('profileMessage','Profile CID saved successfully!');} catch(e) {showMsg('profileMessage', e.error?.message || e.message || 'Failed to save Profile CID.',false);}}
-
-    // NEW: Function to handle DID Key Rotation
-    async function updateDID() {
-      if (!contract) { showMsg('rotateMessage', 'Connect wallet first', false); return; }
-      
-      const newWallet = el('newWalletAddress').value.trim();
-      
-      if (!ethers.utils.isAddress(newWallet)) {
-        showMsg('rotateMessage', 'Please enter a valid Ethereum address for the new wallet.', false);
-        return;
-      }
-
-      if (newWallet.toLowerCase() === currentAccount.toLowerCase()) {
-        showMsg('rotateMessage', 'New wallet address cannot be the same as the current one.', false);
-        return;
-      }
-      
-      try {
-        // The user must sign this transaction with their *current* wallet (msg.sender = old wallet)
-        showMsg('rotateMessage', `Confirm key rotation to ${newWallet} in MetaMask...`, true);
-        const tx = await contract.updateDID(newWallet);
-        await tx.wait();
-        
-        showMsg('rotateMessage', `✅ DID successfully rotated! Your identity is now controlled by ${newWallet}. Please disconnect and reconnect with the new wallet.`, true, 8000);
-        disconnect(); // Force disconnect so user must use the new key next time
-        
-      } catch (e) {
-        console.error("Key Rotation Error:", e);
-        showMsg('rotateMessage', e.error?.message || e.message || 'Key rotation failed. Check console for details.', false);
-      }
-    }
+    window.onload=load;
 
     // Add event listeners for MetaMask account/network changes
     if (typeof window.ethereum !== 'undefined') {
-        window.ethereum.on('accountsChanged', (accounts) => {
-            if (accounts.length === 0) {
-              disconnect();
-            } else {
-              window.location.reload(); 
-            }
-        });
-        window.ethereum.on('chainChanged', (chainId) => {
-            window.location.reload();
-        });
+        window.ethereum.on('accountsChanged', () => window.location.reload());
+        window.ethereum.on('chainChanged', () => window.location.reload());
     }
-
   </script>
 </body>
 </html>
