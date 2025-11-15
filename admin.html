@@ -13,7 +13,7 @@
         padding: 20px; 
         background:#e0f7fa; 
         color:#222; 
-        padding-top: 80px; /* Space for the fixed header */
+        padding-top: 100px; /* Space for the fixed header + status bar */
     }
     .card { background:#fff; padding:30px; border-radius:15px; box-shadow:0 8px 25px rgba(0,0,0,0.1); height: 100%; }
     h2 { color:#00838f; border-bottom:2px solid #e0f7fa; padding-bottom:5px; margin-top:20px; font-weight: 700; }
@@ -28,7 +28,7 @@
     #removeUserBtn { background:#ef5350; color:#fff; }
     #assignRoleBtn { background:#43a047; color:#fff; }
     #checkRoleBtn { background:#00bcd4; color:#fff; }
-    #dashboardBackBtn { background:#78909c; color:#fff; margin-top:30px; }
+    /* Removed #dashboardBackBtn style from here */
     
     /* Dashboard Specific Styles */
     .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
@@ -55,22 +55,46 @@
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
       z-index: 1000;
     }
-    .fixed-header h1 {
-        text-align: left;
-        color: white;
-        margin: 0;
-        font-size: 1.5rem;
-    }
+    /* Main container inside header */
     .fixed-header .header-content {
         max-width: 1200px;
         margin: 0 auto;
         padding: 15px 20px;
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        width: 100%;
     }
-    
-    /* NEW CSS for Status Bar - Timed/Fixed Notification */
+    /* Centered Title */
+    .fixed-header .header-content h1 {
+        color: white;
+        margin: 0 auto; /* Auto margins center the title */
+        font-size: 1.5rem;
+        flex-grow: 1; /* Allows title to take available space for centering */
+        text-align: center; /* Ensures the text is centered within its flexible container */
+    }
+    /* Back Button Style (Moved to the left of the header) */
+    .header-back-btn {
+        background: none;
+        border: 1px solid #78909c;
+        color: white;
+        padding: 6px 10px;
+        font-size: 0.9em;
+        margin-right: 15px; 
+        transition: background-color 0.2s;
+        flex-shrink: 0; /* Prevents button from shrinking */
+    }
+    .header-back-btn:hover {
+        background-color: #00796b;
+    }
+    /* Temporary Owner Info Style (Pushed to the far right) */
+    .header-owner-info {
+        margin-left: auto; 
+        text-align: right;
+        min-width: 200px; 
+        flex-shrink: 0;
+    }
+
+    /* Status Bar */
     #status {
         position: absolute;
         bottom: 0;
@@ -100,9 +124,12 @@
   <!-- NEW: Fixed Header -->
   <div class="fixed-header">
     <div class="header-content">
-        <h1>🔑 Contract Administration & Real-Time Dashboard</h1>
+        <!-- Back Button at the top-left -->
+        <button id="dashboardBackBtn" onclick="window.location.href='secure.html'" class="header-back-btn">← Back to Public Wall</button>
+        <!-- Title, centered -->
+        <h1 class="header-title">🔑 Contract Administration & Real-Time Dashboard</h1>
         <!-- Contract Owner Address will be inserted here temporarily -->
-        <div id="tempOwnerAddress" style="font-size: 0.9em; font-weight: 600; color: #b2ebf2;"></div>
+        <div id="tempOwnerAddress" class="header-owner-info" style="font-size: 0.9em; font-weight: 600; color: #b2ebf2;"></div>
     </div>
     <div id="status" class="status err">Initializing...</div>
   </div>
@@ -192,8 +219,8 @@
         </div>
       </div>
     </div>
-
-    <button id="dashboardBackBtn" onclick="window.location.href='secure.html'">← Back to Public Wall</button>
+    
+    <!-- Removed back button from the bottom -->
   </div>
 
   <script>
@@ -244,8 +271,8 @@
         // 1. Display temporary owner address in the fixed header
         tempOwner.innerHTML = `✅ Admin Access Granted. Owner: <strong style="color: white;">${shortAddr(ownerAddress)}</strong>`;
         
-        // 2. Display success message in the fixed status bar
-        showStatus('Loading Dashboard metrics...', true);
+        // 2. Display simplified success message in the fixed status bar
+        showStatus('Admin Access Verified!', true); 
         
         // 3. Hide status bar after 3 seconds and clear temporary address
         setTimeout(() => {
@@ -279,7 +306,7 @@
         
         if (currentAccount.toLowerCase() === contractOwner.toLowerCase()) {
           // --- SUCCESS PATH ---
-          flashSuccessStatus(contractOwner); // Show the flashy status
+          flashSuccessStatus(contractOwner); 
           el('adminTools').style.display = 'grid';
           initDashboard();
         } else {
