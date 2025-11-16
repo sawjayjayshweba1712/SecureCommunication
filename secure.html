@@ -47,10 +47,6 @@
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
       box-sizing: border-box; 
     }
-    header .header-controls {
-      display: flex;
-      gap: 15px;
-    }
     .container {
       padding: 30px 10%; 
       margin: 0 auto; 
@@ -260,26 +256,86 @@
       font-size: 13px;
       margin-top: 20px;
     }
+
+    /* --- DROPDOWN MENU STYLES --- */
+    /* Dropdown Container */
+    .header-dropdown {
+      position: relative; /* Essential for positioning the content */
+      display: inline-block;
+    }
+
+    /* Dropdown Button Styling */
+    #menuButton {
+      background-color: var(--primary-hover); /* A nice menu color */
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    /* Dropdown Content (The actual menu) */
+    .dropdown-content {
+      display: none; /* Hidden by default */
+      position: absolute;
+      background-color: var(--card-bg);
+      min-width: 160px;
+      box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+      z-index: 1001; /* Above other elements */
+      right: 0; /* Align to the right of the button */
+      border-radius: 8px;
+      overflow: hidden; /* Ensures rounded corners */
+    }
+
+    /* Links inside the dropdown */
+    .dropdown-content a {
+      color: var(--text-color);
+      padding: 12px 16px;
+      text-decoration: none;
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+
+    .dropdown-content a:hover {
+      background-color: var(--bg-color);
+    }
+    
+    /* Specific styling for Logout button in the dropdown */
+    .dropdown-content a.btn-danger {
+      background-color: var(--danger-color);
+      color: white;
+      text-align: center;
+    }
+
+    .dropdown-content a.btn-danger:hover {
+      background-color: var(--danger-hover);
+    }
+
+    /* JavaScript Toggle Class */
+    .dropdown-content.show {
+      display: block;
+    }
+    /* --- END DROPDOWN MENU STYLES --- */
   </style>
 </head>
 <body>
 
   <header>
     <span> 🎓University Portal</span>
-    <div class="header-controls">
-      <button class="btn btn-primary" onclick="window.location.href='admin.html'" style="background-color: #ffb300; color: #333;">
-        🔑 Admin Panel
+    
+    <div class="header-dropdown">
+      <button class="btn btn-primary" id="menuButton" onclick="toggleDropdown()">
+        Menu ▼
       </button>
-      <button class="btn btn-primary" 
-              onclick="window.location.href='user_data_view.html'" 
-              style="background-color: var(--success-color); color: white;">
-        📝 Student Info
-      </button>
-      <button class="btn btn-danger" onclick="logout()">
-        Logout
-      </button>
+      <div class="dropdown-content" id="dropdownMenu">
+        <a href="admin.html" style="background-color: #ffb300; color: #333;">🔑 Admin Panel</a>
+        <a href="user_data_view.html" style="background-color: var(--success-color); color: white;">📝 Student Info</a>
+        <a href="#" class="btn-danger" onclick="logout()">Logout</a>
+      </div>
     </div>
-  </header>
+    </header>
 
   <div class="container">
     <div id="public-wall">
@@ -338,6 +394,29 @@
       alert("Logging out and returning to login page...");
       window.location.href = "index.html";
     }
+
+    // NEW JAVASCRIPT FOR DROPDOWN
+    /**
+     * Toggles the visibility of the dropdown menu.
+     */
+    function toggleDropdown() {
+        document.getElementById("dropdownMenu").classList.toggle("show");
+    }
+
+    // Close the dropdown if the user clicks outside of it
+    window.onclick = function(event) {
+      if (!event.target.matches('#menuButton')) {
+        const dropdowns = document.getElementsByClassName("dropdown-content");
+        for (let i = 0; i < dropdowns.length; i++) {
+          const openDropdown = dropdowns[i];
+          if (openDropdown.classList.contains('show')) {
+            openDropdown.classList.remove('show');
+          }
+        }
+      }
+    }
+    // END NEW JAVASCRIPT FOR DROPDOWN
+
 
     // --- BLOCKCHAIN SETUP ---
     const CONTRACT_ADDRESS = "0xf6a78C96484CAe38412aad54fDcFf13145de4CA4"; 
