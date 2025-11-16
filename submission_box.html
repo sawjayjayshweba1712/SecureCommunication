@@ -7,11 +7,9 @@
   
   <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script> ```
-
-  <style>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script> <style>
     :root {
       --primary-color: #273c75;
       --secondary-color: #40739e;
@@ -208,22 +206,23 @@
 
   <script>
     // --- BLOCKCHAIN CONFIG (from AuthManager.sol) ---
+    // NOTE: This MUST match the contract address used in dashboard.html and admin.html
     const CONTRACT_ADDRESS = "0xd1968a1b2250233500D4dd3967012928e87Ef66c"; 
     const AUTH_ABI = [ "function getRole(address user) view returns (string memory)" ];
     const ALLOWED_ROLES = ["admin", "teacher"];
 
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyDIg9PBnO2azEIdx51RUhfHBclt2lYxHwU",
-  authDomain: "student-portal-1f1ee.firebaseapp.com",
-  projectId: "student-portal-1f1ee",
-  storageBucket: "student-portal-1f1ee.firebasestorage.app",
-  messagingSenderId: "256625411080",
-  appId: "1:256625411080:web:f8fc44201604e769effdbd",
-  measurementId: "G-XCZ2Q2841X"
-};
+    // --- ⚠️ FIREBASE CONFIG (DUMMY DATA - REPLACE THESE!) ⚠️ ---
+    // You MUST replace these values with your actual Firebase project configuration.
+    const firebaseConfig = {
+        apiKey: "AIzaSyB_YOUR_CUSTOM_API_KEY_d1968a1b2250233500", 
+        authDomain: "university-portal-4321.firebaseapp.com",      
+        projectId: "university-portal-4321",                      
+        storageBucket: "university-portal-4321.appspot.com",       
+        messagingSenderId: "123456789012",                        
+        appId: "1:123456789012:web:abcdef0123456789",              
+    };
 
-    let db;
+    let db, auth; // Firebase instances (Firestore and Auth)
     let currentAccount, userRole;
 
     // --- UTILITY FUNCTIONS ---
@@ -254,7 +253,7 @@ const firebaseConfig = {
 
     // --- CORE LOGIC ---
 
-    // 1. Initialize Firebase and Check Role
+    // 1. Initialize Firebase, Auth, and Check Role
     async function init() {
         if (typeof window.ethereum === "undefined") {
             setStatus("MetaMask not found. Cannot verify role.", false);
@@ -265,13 +264,18 @@ const firebaseConfig = {
         try {
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
+            auth = firebase.auth(); // Initialize Auth
+            
+            // CRITICAL FIX: Sign in the user anonymously to satisfy Firebase Security Rules
+            await auth.signInAnonymously();
+            
         } catch (e) {
             console.error("Firebase Initialization Failed: Check your firebaseConfig object.", e);
-            setStatus("Firebase initialization failed. Check console.", false);
+            setStatus(`Firebase initialization failed: ${e.message}`, false);
             return;
         }
 
-        // 1.2 Wallet and Role Check
+        // 1.2 Wallet and Role Check (Blockchain)
         try {
             setStatus("Connecting wallet and checking role...", true, true);
             const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -291,11 +295,11 @@ const firebaseConfig = {
                 setStatus(`Access Granted! Role: ${userRole.toUpperCase()}. You can create submission boxes.`, true);
                 document.getElementById('createBoxBtn').style.display = 'inline-block';
             } else {
-                // Access Denied for box creation
+                // Access Granted (Read-Only) for members
                 setStatus(`Access Granted (Read-Only). Your role (${userRole || 'member'}) does not permit creating boxes.`, true);
             }
             
-            // 1.3 Load existing boxes
+            // 1.3 Load existing boxes using the real-time listener
             loadSubmissionBoxes();
 
         } catch (error) {
@@ -328,32 +332,30 @@ const firebaseConfig = {
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
+            // This write operation is now possible because the user is signed in anonymously to Firebase
             await db.collection("submissionBoxes").add(newBox);
             alert("Submission box created successfully!");
             closeCreateModal();
-            // loadSubmissionBoxes() will be called by the real-time listener (if implemented) 
-            // or you can call it manually here:
-            // loadSubmissionBoxes(); 
+            // The loadSubmissionBoxes listener will handle the UI update automatically.
 
         } catch (error) {
             console.error("Error creating submission box:", error);
-            alert("Failed to create submission box. Check console.");
+            alert(`Failed to create submission box. Check console. Error: ${error.message}`);
         }
     }
 
-    // 3. CRUD: Read Submission Boxes
+    // 3. CRUD: Read Submission Boxes (Real-time Listener)
     function loadSubmissionBoxes() {
         const listEl = document.getElementById('submission-box-list');
         const loadingMsg = document.getElementById('loadingMessage');
         
         if (loadingMsg) loadingMsg.textContent = "Loading submission boxes from Firebase...";
-        listEl.innerHTML = ''; // Clear previous content
+        listEl.innerHTML = ''; 
 
-        // Real-time listener for Firebase Firestore
         db.collection("submissionBoxes")
           .orderBy("createdAt", "desc")
           .onSnapshot((querySnapshot) => {
-            listEl.innerHTML = '';
+            listEl.innerHTML = ''; // Clear and rebuild on every snapshot
             
             if (querySnapshot.empty) {
                 listEl.innerHTML = `
@@ -380,7 +382,8 @@ const firebaseConfig = {
     // 4. Render UI
     function appendBoxToUI(box, id) {
         const listEl = document.getElementById('submission-box-list');
-        const boxDate = box.createdAt ? box.createdAt.toDate().toLocaleDateString() : 'N/A';
+        // Handle timestamp conversion carefully as it might be 'serverTimestamp' initially
+        const boxDate = box.createdAt ? box.createdAt.toDate().toLocaleDateString() : 'Saving...';
         
         const el = document.createElement("div");
         el.className = "submission-box-item";
@@ -389,7 +392,7 @@ const firebaseConfig = {
             <p>${box.description || 'No description provided.'}</p>
             <div class="box-footer">
                 <span>Created by: ${shortAddr(box.creator)} (${box.creatorRole}) on ${boxDate}</span>
-                <button class="btn-primary" onclick="openSubmission(id)">View/Submit</button>
+                <button class="btn-primary" onclick="openSubmission('${id}')">View/Submit</button>
             </div>
         `;
         listEl.appendChild(el);
@@ -400,7 +403,7 @@ const firebaseConfig = {
         alert(`Opening submission box: ${boxId}. This is where you'd implement the file upload logic using Firebase Storage.`);
     }
 
-    // --- STARTUP ---
+    // --- STARTUP & METAMASK LISTENERS ---
     window.addEventListener("DOMContentLoaded", init);
     
     if (typeof window.ethereum !== 'undefined') {
