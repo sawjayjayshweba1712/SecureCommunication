@@ -12,266 +12,204 @@
   <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-storage.js"></script> 
   
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
   <style>
-    /* ========== COLORS & THEME ========== */
+    /* ADVANCED UI STYLES */
     :root {
-      --primary-color: #2f3640;
-      --secondary-color: #00a8ff;
-      --accent-color: #9c88ff;
-      --bg-color: #f5f6fa;
+      --primary-color: #1a73e8; /* Google Blue - Energetic primary color */
+      --secondary-color: #34476a; /* Darker navy for accents */
+      --bg-color: #f8f9fa; /* Very light background */
       --card-bg: #ffffff;
-      --text-color: #2d3436;
-      --text-light: #636e72;
-      --success-color: #44bd32;
-      --danger-color: #e84118;
-      --warning-color: #fbc531;
-      --shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-      --transition: 0.3s ease-in-out;
-      --border-radius: 12px;
-      --font-family: "Poppins", sans-serif;
+      --text-color: #1e293b; /* Deep slate */
+      --text-light: #64748b; /* Subtle gray */
+      --success-color: #28a745;
+      --danger-color: #dc3545;
+      --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.08);
+      --shadow-dark: 0 10px 30px rgba(0, 0, 0, 0.15);
     }
-
     body {
       margin: 0;
-      font-family: var(--font-family);
+      font-family: "Inter", sans-serif;
       background-color: var(--bg-color);
       color: var(--text-color);
       padding: 40px 20px;
-      line-height: 1.5;
     }
-
-    /* ========== CONTAINER ========== */
     .container {
       max-width: 1200px;
       margin: 0 auto;
       background: var(--card-bg);
-      border-radius: var(--border-radius);
-      padding: 40px;
-      box-shadow: var(--shadow);
-      transition: box-shadow var(--transition);
+      border-radius: 18px; /* Softer rounded corners */
+      padding: 30px;
+      box-shadow: var(--shadow-dark); /* Deeper shadow for lift */
     }
-    .container:hover {
-      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.12);
-    }
-
-    /* ========== HEADINGS ========== */
     h1 {
       color: var(--primary-color);
-      border-bottom: 2px solid #e0e6eb;
-      padding-bottom: 10px;
+      border-bottom: 2px solid #e9ecef;
+      padding-bottom: 15px;
       margin-top: 0;
+      font-weight: 700;
+      font-size: 2rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 28px;
     }
-
-    /* ========== BUTTONS ========== */
-    button {
-      font-family: var(--font-family);
-      font-weight: 500;
-      cursor: pointer;
+    .btn-back, .btn-primary, .btn-danger {
+      padding: 12px 20px;
       border: none;
-      border-radius: var(--border-radius);
-      transition: all var(--transition);
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-
     .btn-back {
       background-color: var(--secondary-color);
-      color: #fff;
-      padding: 10px 20px;
-      margin-bottom: 25px;
+      color: white;
+      margin-right: 15px;
+      margin-bottom: 20px;
     }
-    .btn-back:hover {
-      background-color: #0097e6;
-    }
-
+    .btn-back:hover { background-color: #2c3a57; box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2); }
     .btn-primary {
       background-color: var(--primary-color);
-      color: #fff;
-      padding: 10px 20px;
+      color: white;
     }
     .btn-primary:hover {
-      background-color: var(--secondary-color);
+      background-color: #1558b3;
+      box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2);
     }
-
     .btn-danger {
-      background-color: var(--danger-color);
-      color: #fff;
-      padding: 8px 15px;
-      font-size: 13px;
+        background-color: var(--danger-color);
+        color: white;
     }
     .btn-danger:hover {
-      background-color: #c0392b;
+        background-color: #b02a37;
+    }
+    .btn-light {
+        background-color: #f0f0f0;
+        color: var(--text-color);
+    }
+    .btn-light:hover {
+        background-color: #e0e0e0;
     }
 
-    /* ========== STATUS MESSAGES ========== */
+    /* Status Messages and Access Info */
     #accessStatus {
-      padding: 15px 20px;
-      border-radius: var(--border-radius);
+      padding: 15px;
+      border-radius: 10px;
       margin-bottom: 25px;
       font-weight: 600;
       text-align: center;
-      font-size: 15px;
-      box-shadow: var(--shadow);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
     }
-    .status-denied {
-      background-color: #ffebee;
-      color: var(--danger-color);
-      border: 1px solid #ffcdd2;
-    }
-    .status-loading {
-      background-color: #dff9fb;
-      color: var(--secondary-color);
-    }
-    .status-success {
-      background-color: #eaffea;
-      color: var(--success-color);
-    }
-
-    /* ========== ACCESS INFO ========== */
+    .status-denied { background-color: #f8d7da; color: var(--danger-color); }
+    .status-loading { background-color: #cfe2ff; color: var(--primary-color); }
+    .status-success { background-color: #d4edda; color: var(--success-color); }
+    
     #accessInfo {
-      margin-bottom: 25px;
-      padding: 15px 20px;
-      background-color: #f0f0f0;
-      border-radius: var(--border-radius);
-      font-size: 15px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: var(--shadow);
+        margin-bottom: 25px;
+        padding: 12px 15px;
+        background-color: #e9ecef;
+        border-radius: 8px;
+        font-size: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
-    #accessInfo strong {
-      color: var(--primary-color);
-    }
+    #accessInfo strong { color: var(--secondary-color); font-weight: 700; }
 
-    /* ========== SUBMISSION BOX LIST ========== */
+    /* Submission Box UI */
     #submission-box-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 25px;
-      margin-top: 30px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 25px;
+        margin-top: 30px;
     }
     .submission-box-item {
-      background: var(--card-bg);
-      border-radius: var(--border-radius);
-      padding: 25px 20px 20px 20px;
-      box-shadow: var(--shadow);
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      transition: transform var(--transition), box-shadow var(--transition);
+        background: var(--card-bg);
+        border: 1px solid #e0e6eb;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: var(--shadow-light);
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        transition: transform 0.2s, box-shadow 0.2s;
     }
     .submission-box-item:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
     }
     .submission-box-item h3 {
-      margin: 0 0 12px 0;
-      color: var(--primary-color);
-      font-size: 20px;
-      padding-right: 70px;
+        margin-top: 0;
+        color: var(--primary-color);
+        font-weight: 700;
+        font-size: 1.5rem;
+        padding-right: 60px;
     }
     .submission-box-item p {
-      flex-grow: 1;
-      font-size: 14px;
-      color: var(--text-light);
-      margin-bottom: 15px;
+        flex-grow: 1;
+        font-size: 14px;
+        color: var(--text-light);
+        line-height: 1.6;
+        margin-bottom: 20px;
     }
     .box-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 13px;
-      color: var(--text-light);
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px dashed #e9ecef;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        color: var(--text-light);
     }
     .box-footer button {
-      padding: 6px 12px;
-      font-size: 13px;
+        padding: 8px 14px;
+        font-size: 13px;
     }
     .box-delete-btn {
-      position: absolute;
-      top: 15px;
-      right: 15px;
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        padding: 6px 10px;
+        font-size: 13px;
     }
 
-    /* ========== MODAL ========== */
+    /* Modal Styling */
     .modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(47, 54, 64, 0.75);
-      display: none; 
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-      animation: fadeIn 0.3s ease forwards;
+        /* ... existing styles ... */
     }
     .modal-content {
-      background: var(--card-bg);
-      padding: 30px;
-      border-radius: var(--border-radius);
-      width: 90%;
-      max-width: 500px;
-      box-shadow: 0 12px 30px rgba(0,0,0,0.25);
-      animation: slideUp 0.3s ease forwards;
+        /* ... existing styles ... */
+        border-radius: 18px;
+        box-shadow: var(--shadow-dark);
     }
-    .modal-content h2 {
-      margin-top: 0;
-      color: var(--primary-color);
-      margin-bottom: 20px;
-    }
-    .modal-content input[type="text"],
+    .modal-content input[type="text"], 
     .modal-content input[type="file"],
     .modal-content textarea {
-      width: 100%;
-      padding: 12px 15px;
-      margin-bottom: 15px;
-      border: 1px solid #dcdde1;
-      border-radius: var(--border-radius);
-      box-sizing: border-box;
-      font-family: var(--font-family);
-      transition: all var(--transition);
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #ced4da;
+        transition: border-color 0.2s;
     }
-    .modal-content input[type="text"]:focus,
-    .modal-content textarea:focus {
-      border-color: var(--secondary-color);
-      outline: none;
-      box-shadow: 0 0 8px rgba(0,168,255,0.2);
+    .modal-content input:focus, .modal-content textarea:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2);
+        outline: none;
     }
     #submissionStatus {
-      margin-top: 10px;
-      font-size: 13px;
-      font-weight: 500;
+        margin-top: 15px;
+        font-size: 14px;
+        padding: 10px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
-
-    /* ========== ANIMATIONS ========== */
-    @keyframes fadeIn {
-      from {opacity: 0;}
-      to {opacity: 1;}
-    }
-    @keyframes slideUp {
-      from {transform: translateY(30px); opacity: 0;}
-      to {transform: translateY(0); opacity: 1;}
-    }
-
-    /* ========== LOADING MESSAGE ========== */
-    #loadingMessage {
-      grid-column: 1 / -1;
-      text-align: center;
-      color: var(--text-light);
-      font-style: italic;
-    }
-
-    /* ========== RESPONSIVE ========== */
-    @media (max-width: 768px) {
-      .container { padding: 25px; }
-      h1 { flex-direction: column; gap: 15px; font-size: 24px; }
-      #accessInfo { flex-direction: column; gap: 10px; text-align: center; }
-      .submission-box-item h3 { padding-right: 50px; font-size: 18px; }
-    }
+    #submissionStatus.status-success { background-color: #d4edda; color: var(--success-color); }
+    #submissionStatus.status-denied { background-color: #f8d7da; color: var(--danger-color); }
   </style>
 </head>
 <body>
@@ -280,7 +218,7 @@
     <button class="btn-back" onclick="window.location.href='secure.html'">← Back to Public Wall</button>
     
     <h1>
-      <span>📂 Submission Portal (Firebase)</span>
+      <span>📂 Assignment Submission Portal</span>
       <button id="createBoxBtn" class="btn-primary" style="display: none;" onclick="openCreateModal()">
         + Create Submission Box
       </button>
@@ -296,7 +234,7 @@
     </div>
 
     <div id="submission-box-list">
-        <p id="loadingMessage">
+        <p style="grid-column: 1 / -1; text-align: center; color: var(--text-light);" id="loadingMessage">
             Loading submission boxes...
         </p>
     </div>
@@ -308,7 +246,7 @@
         <input type="text" id="boxTitle" placeholder="Submission Title (e.g., Assignment 1: Report)" required>
         <textarea id="boxDescription" placeholder="Detailed instructions..." rows="4"></textarea>
         <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-            <button class="btn-back" onclick="closeCreateModal()">Cancel</button>
+            <button class="btn-light" onclick="closeCreateModal()">Cancel</button>
             <button class="btn-primary" onclick="createSubmissionBox()">Create Box</button>
         </div>
     </div>
@@ -327,15 +265,355 @@
         <div id="submissionStatus" class="status-message" style="display:none;"></div>
         
         <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-            <button class="btn-back" onclick="closeSubmissionModal()">Cancel</button>
+            <button class="btn-light" onclick="closeSubmissionModal()">Cancel</button>
             <button class="btn-primary" id="uploadBtn" onclick="handleFileUpload()">Upload & Submit</button>
         </div>
     </div>
   </div>
 
   <script>
-    // ========================== YOUR EXISTING JAVASCRIPT CODE ==========================
-    // All JS remains exactly as in your original file
+    // --- BLOCKCHAIN CONFIG (from AuthManager.sol) ---
+    const CONTRACT_ADDRESS = "0xd1968a1b2250233500D4dd3967012928e87Ef66c"; 
+    const AUTH_ABI = [ "function getRole(address user) view returns (string memory)" ];
+    const ALLOWED_ROLES = ["admin", "teacher"];
+
+    // --- ⚠️ FIREBASE CONFIG (REPLACE THESE!) ⚠️ ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyDIg9PBnO2azEIdx51RUhfHBclt2lYxHwU",
+        authDomain: "student-portal-1f1ee.firebaseapp.com",
+        projectId: "student-portal-1f1ee",
+        storageBucket: "student-portal-1f1ee.appspot.com", 
+        messagingSenderId: "256625411080",
+        appId: "1:256625411080:web:f8fc44201604e769effdbd",
+        measurementId: "G-XCZ2Q2841X"
+    };
+
+    let db, auth, storage; // Firebase instances
+    let currentAccount, userRole;
+    let currentSubmissionBoxId; 
+
+    // --- UTILITY FUNCTIONS ---
+    function setStatus(message, isSuccess = true, isLoading = false) {
+        const statusEl = document.getElementById('accessStatus');
+        statusEl.textContent = message;
+        statusEl.className = 'status-message ' + (
+            isLoading ? 'status-loading' : 
+            isSuccess ? 'status-success' : 
+            'status-denied'
+        );
+    }
+    
+    function setSubmissionStatus(message, isSuccess = true) {
+        const statusEl = document.getElementById('submissionStatus');
+        statusEl.style.display = 'flex'; // Use flex for better alignment
+        statusEl.textContent = message;
+        statusEl.className = 'status-message ' + (isSuccess ? 'status-success' : 'status-denied');
+    }
+
+    function shortAddr(a) {
+        return a ? `${a.slice(0, 6)}...${a.slice(-4)}` : "N/A";
+    }
+
+    // Modal Handlers
+    function openCreateModal() {
+        document.getElementById('createBoxModal').style.display = 'flex';
+        document.getElementById('boxTitle').focus();
+    }
+
+    function closeCreateModal() {
+        document.getElementById('createBoxModal').style.display = 'none';
+        document.getElementById('boxTitle').value = '';
+        document.getElementById('boxDescription').value = '';
+    }
+
+    function closeSubmissionModal() {
+        document.getElementById('submissionModal').style.display = 'none';
+        document.getElementById('fileInput').value = ''; 
+        document.getElementById('submissionNote').value = '';
+        document.getElementById('submissionStatus').style.display = 'none';
+        currentSubmissionBoxId = null;
+    }
+
+    // --- CORE LOGIC ---
+
+    async function init() {
+        if (typeof window.ethereum === "undefined") {
+            setStatus("MetaMask not found. Cannot verify role.", false);
+            return;
+        }
+        
+        // 1.1 Firebase Initialization
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            auth = firebase.auth(); 
+            storage = firebase.storage(); 
+            
+            await auth.signInAnonymously();
+            
+        } catch (e) {
+            console.error("Firebase Initialization Failed:", e);
+            setStatus(`Firebase initialization failed: ${e.message}`, false);
+            return;
+        }
+
+        // 1.2 Wallet and Role Check (Blockchain)
+        try {
+            setStatus("Connecting wallet and checking role...", true, true);
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            await provider.send("eth_requestAccounts", []);
+            
+            currentAccount = await provider.getSigner().getAddress();
+            
+            const contract = new ethers.Contract(CONTRACT_ADDRESS, AUTH_ABI, provider);
+            
+            userRole = (await contract.getRole(currentAccount)).toLowerCase();
+            document.getElementById('userRole').textContent = userRole || 'member (default)';
+            document.getElementById('walletAddress').textContent = shortAddr(currentAccount);
+            document.getElementById('accessInfo').style.display = 'flex';
+
+            if (ALLOWED_ROLES.includes(userRole)) {
+                setStatus(`Access Granted! Role: ${userRole.toUpperCase()}. You can create submission boxes.`, true);
+                document.getElementById('createBoxBtn').style.display = 'inline-block';
+            } else {
+                setStatus(`Access Granted (Read-Only). Your role (${userRole || 'member'}) does not permit creating boxes.`, true);
+            }
+            
+            loadSubmissionBoxes();
+
+        } catch (error) {
+            console.error("Connection/Role check error:", error);
+            setStatus(`Connection/Contract Error: ${error.message || 'Check console. Ensure AuthManager is deployed.'}`, false);
+        }
+    }
+
+    // CRUD: Create Submission Box
+    async function createSubmissionBox() {
+        if (!ALLOWED_ROLES.includes(userRole)) {
+            alert("Permission denied. Only Admins and Teachers can create submission boxes.");
+            return;
+        }
+
+        const title = document.getElementById('boxTitle').value.trim();
+        const description = document.getElementById('boxDescription').value.trim();
+
+        if (!title) {
+            alert("The submission title cannot be empty.");
+            return;
+        }
+        
+        try {
+            const newBox = {
+                title: title,
+                description: description,
+                creator: currentAccount,
+                creatorRole: userRole,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            await db.collection("submissionBoxes").add(newBox);
+            closeCreateModal();
+        } catch (error) {
+            console.error("Error creating submission box:", error);
+            alert(`Failed to create submission box. Check console. Error: ${error.message}`);
+        }
+    }
+    
+    // CRUD: Delete Submission Box
+    async function deleteSubmissionBox(boxId) {
+        if (!ALLOWED_ROLES.includes(userRole)) {
+            alert("Permission denied. Only Admins and Teachers can delete submission boxes.");
+            return;
+        }
+
+        if (!confirm("Are you sure you want to permanently delete this submission box and all associated metadata? File data in Storage will remain until manually deleted.")) {
+            return;
+        }
+        
+        try {
+            // Delete the document from Firestore
+            await db.collection("submissionBoxes").doc(boxId).delete();
+            setStatus(`Box ${shortAddr(boxId)} deleted successfully.`, true);
+            setTimeout(() => setStatus(`Role: ${userRole.toUpperCase()}`, true), 3000);
+
+        } catch (error) {
+            console.error("Error deleting submission box:", error);
+            alert(`Failed to delete box. Check console. Error: ${error.message}`);
+        }
+    }
+    
+    // UI: Open Submission Modal
+    async function openSubmission(boxId) {
+        currentSubmissionBoxId = boxId;
+        document.getElementById('submissionStatus').style.display = 'none'; // Clear status on open
+        
+        try {
+            const doc = await db.collection("submissionBoxes").doc(boxId).get();
+            if (doc.exists) {
+                document.getElementById('submissionAssignmentTitle').textContent = doc.data().title;
+            } else {
+                document.getElementById('submissionAssignmentTitle').textContent = "Assignment Not Found";
+            }
+        } catch (error) {
+            console.error("Error fetching assignment title:", error);
+            document.getElementById('submissionAssignmentTitle').textContent = "Error Loading Title";
+        }
+        
+        document.getElementById('submissionModal').style.display = 'flex';
+        document.getElementById('fileInput').focus();
+    }
+
+    // CRUD: Handle File Upload to Storage and Metadata to Firestore
+    async function handleFileUpload() {
+        if (!currentAccount) {
+            setSubmissionStatus("Wallet not connected.", false);
+            return;
+        }
+
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+        const note = document.getElementById('submissionNote').value.trim();
+        const uploadBtn = document.getElementById('uploadBtn');
+
+        if (!file) {
+            setSubmissionStatus("Please select a file to upload.", false);
+            return;
+        }
+        
+        uploadBtn.disabled = true;
+        setSubmissionStatus(`Uploading ${file.name}... (Do not close)`, true);
+
+        try {
+            // 1. Prepare Storage path
+            const filename = file.name;
+            const timestamp = Date.now();
+            const storagePath = `submissions/${currentSubmissionBoxId}/${currentAccount}_${timestamp}_${filename}`;
+            
+            const storageRef = storage.ref(storagePath);
+            const uploadTask = storageRef.put(file);
+
+            // 2. Monitor upload progress (State changed listener)
+            uploadTask.on(firebase.storage.TaskEvent.STATE_CHANGED, 
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    setSubmissionStatus(`Upload in progress: ${Math.round(progress)}% complete...`, true);
+                }, 
+                (error) => {
+                    // This catches network/permission errors during the upload process
+                    console.error("Storage Upload Error:", error);
+                    uploadBtn.disabled = false;
+                    setSubmissionStatus(`❌ Upload Failed: Check Firebase Storage Rules or console.`, false);
+                }, 
+                async () => {
+                    // 3. SUCCESS: Get download URL and save metadata to Firestore
+                    try {
+                        const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+                        
+                        const submissionData = {
+                            boxId: currentSubmissionBoxId,
+                            submitter: currentAccount,
+                            submitterRole: userRole || 'member',
+                            submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            fileName: filename,
+                            fileSize: file.size,
+                            filePath: storagePath,
+                            fileURL: downloadURL,
+                            note: note
+                        };
+                        
+                        await db.collection('submissions').add(submissionData);
+
+                        // 4. Final Notification and Cleanup
+                        setSubmissionStatus("✅ File submitted successfully!", true);
+                        
+                        // Clear the file input and close the modal after 2 seconds
+                        setTimeout(closeSubmissionModal, 2000);
+                        
+                    } catch (firestoreError) {
+                        console.error("Firestore Metadata Save Failed:", firestoreError);
+                        setSubmissionStatus(`❌ Metadata Save Failed. File uploaded, but data not saved.`, false);
+                    } finally {
+                        uploadBtn.disabled = false;
+                    }
+                }
+            );
+
+        } catch (initialError) {
+            console.error("Initial Submission Setup Failed:", initialError);
+            uploadBtn.disabled = false;
+            setSubmissionStatus(`Submission Setup Failed: ${initialError.message}`, false);
+        }
+    }
+
+
+    // CRUD: Read Submission Boxes (Real-time Listener)
+    function loadSubmissionBoxes() {
+        const listEl = document.getElementById('submission-box-list');
+        const loadingMsg = document.getElementById('loadingMessage');
+        
+        if (loadingMsg) loadingMsg.textContent = "Loading submission boxes from Firebase...";
+        listEl.innerHTML = ''; 
+
+        db.collection("submissionBoxes")
+          .orderBy("createdAt", "desc")
+          .onSnapshot((querySnapshot) => {
+            listEl.innerHTML = ''; 
+            
+            if (querySnapshot.empty) {
+                listEl.innerHTML = `
+                    <p style="grid-column: 1 / -1; text-align: center; color: var(--text-light);">
+                        No submission boxes found.
+                    </p>`;
+                return;
+            }
+
+            querySnapshot.forEach((doc) => {
+                const box = doc.data();
+                const boxId = doc.id;
+                appendBoxToUI(box, boxId);
+            });
+          }, (error) => {
+            console.error("Error loading submission boxes:", error);
+            listEl.innerHTML = `
+                <p style="grid-column: 1 / -1; text-align: center; color: var(--danger-color);">
+                    Error: Could not load data from Firebase. Check console/network.
+                </p>`;
+          });
+    }
+
+    // UI: Render Box Item (Now includes the delete button)
+    function appendBoxToUI(box, id) {
+        const listEl = document.getElementById('submission-box-list');
+        const boxDate = box.createdAt ? box.createdAt.toDate().toLocaleDateString() : 'Saving...';
+        
+        const canDelete = ALLOWED_ROLES.includes(userRole);
+        
+        let deleteButtonHtml = '';
+        if (canDelete) {
+            deleteButtonHtml = `<button class="btn btn-danger box-delete-btn" onclick="deleteSubmissionBox('${id}')">🗑️ Delete</button>`;
+        }
+
+        const el = document.createElement("div");
+        el.className = "submission-box-item";
+        el.innerHTML = `
+            ${deleteButtonHtml}
+            <h3>${box.title}</h3>
+            <p>${box.description || 'No description provided.'}</p>
+            <div class="box-footer">
+                <span style="font-weight: 600;">Creator: ${shortAddr(box.creator)} (${box.creatorRole})</span>
+                <button class="btn-primary" onclick="openSubmission('${id}')">Upload File</button>
+            </div>
+        `;
+        listEl.appendChild(el);
+    }
+    
+    // --- STARTUP & METAMASK LISTENERS ---
+    window.addEventListener("DOMContentLoaded", init);
+    
+    if (typeof window.ethereum !== 'undefined') {
+        window.ethereum.on('accountsChanged', () => window.location.reload());
+        window.ethereum.on('chainChanged', () => window.location.reload());
+    }
   </script>
 </body>
 </html>
