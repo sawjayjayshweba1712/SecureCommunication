@@ -13,7 +13,7 @@
     :root {
       --primary-blue: #1a73e8; 
       --secondary-dark: #34476a;
-      --bg-color: #f0f4f8; /* Light gray-blue background */
+      --bg-color: #f0f4f8; 
       --card-bg: #ffffff;
       --text-color: #1e293b;
       --text-light: #64748b;
@@ -21,17 +21,35 @@
       --danger: #dc3545;
       --warning: #ffb300;
       --shadow-lift: 0 10px 30px rgba(0, 0, 0, 0.15);
+
+      /* --- NEW BACKGROUND GRADIENT COLORS --- */
+      --bg-gradient-1: #e9eef7;
+      --bg-gradient-2: #f0f8f9;
+      --bg-gradient-3: #f5eef7;
     }
+    
+    /* --- BACKGROUND ANIMATION KEYFRAMES --- */
+    @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
     body { 
         font-family: 'Inter', sans-serif; 
         margin: 0;
-        background: var(--bg-color); 
         color: var(--text-color);
         display: flex;
         min-height: 100vh;
         align-items: center;
         justify-content: center;
         padding: 20px;
+        box-sizing: border-box; 
+
+        /* --- APPLY ANIMATED BACKGROUND --- */
+        background: linear-gradient(-45deg, var(--bg-gradient-1), var(--bg-gradient-2), var(--bg-gradient-3), var(--bg-color));
+        background-size: 400% 400%;
+        animation: gradientShift 15s ease infinite; 
     }
 
     /* Main Container (Simulating the clean central panel) */
@@ -50,30 +68,35 @@
     .sidebar {
         width: 35%;
         padding: 40px;
-        background-color: var(--secondary-dark); /* Dark background for contrast */
+        background-color: var(--secondary-dark);
         color: white;
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
         text-align: center;
+        box-sizing: border-box; 
     }
     .sidebar h2 {
         font-size: 2rem;
         font-weight: 800;
         margin-bottom: 20px;
-        color: var(--primary-blue);
+        color: white; /* Changed to white for better contrast against dark background */
     }
     .sidebar p {
         color: #b0bec5;
         font-size: 1.1em;
     }
+    
+    /* --- FIX FOR STATUS PANEL ALIGNMENT --- */
     .status-panel {
         padding: 20px;
         background: rgba(255, 255, 255, 0.1);
         border-radius: 12px;
         margin-top: 30px;
-        width: 100%;
+        width: 100%; /* Changed from 90% to 100% for a fuller look */
+        max-width: 100%; 
+        box-sizing: border-box; 
     }
     .status-panel strong {
         display: block;
@@ -86,13 +109,14 @@
         word-break: break-all;
     }
 
-    /* Right Content Area for Forms/Actions */
+    /* Right Content Area for Forms/Actions (Remains largely the same) */
     .content {
         flex-grow: 1;
         padding: 50px;
         display: flex;
         flex-direction: column;
         justify-content: center;
+        box-sizing: border-box;
     }
     h1 { 
         font-size: 2.5rem;
@@ -132,7 +156,7 @@
         border:0; 
         border-radius:8px; 
         cursor:pointer; 
-        font-weight: 700; /* Bolder text for CTA */
+        font-weight: 700;
         transition: all 0.2s ease;
         box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         flex-grow: 1;
@@ -155,7 +179,7 @@
     #registerButton { background:#40739e; color:#fff; }
     #registerButton:hover { background: #355d7f; }
     
-    #deactivateButton { background:#fa8231; color:#fff; } /* Orange for cautionary action */
+    #deactivateButton { background:#fa8231; color:#fff; }
     #deactivateButton:hover { background: #e0702a; }
 
     #rotateButton, .row button:not(#registerButton):not(#authButton):not(#deactivateButton):not(#connectButton) { 
@@ -172,8 +196,17 @@
         font-weight: 500;
         border-left: 5px solid;
     }
-    .ok { background:#e8f5e9; color:var(--success); border-color:var(--success); }
-    .err { background:#ffebee; color:var(--danger); border-color:var(--danger); }
+    /* Specific status block in the sidebar */
+    .sidebar .status {
+        width: 100%;
+        margin: 0 0 15px 0;
+        padding: 10px;
+        text-align: center;
+    }
+    
+    /* Custom status colors for the sidebar */
+    .sidebar .ok { background:#e8f5e9; color:var(--success); border-color:var(--success); }
+    .sidebar .err { background:#ffebee; color:var(--danger); border-color:var(--danger); }
     
     /* Input Field Styling */
     input[type="text"] { 
@@ -197,17 +230,33 @@
         margin-bottom: 5px;
         font-size: 0.9em;
     }
+    
+    /* Media Query for smaller screens */
+    @media (max-width: 900px) {
+        .container {
+            flex-direction: column;
+            min-height: auto;
+            max-width: 600px;
+        }
+        .sidebar {
+            width: 100%;
+            padding: 30px;
+        }
+        .content {
+            padding: 30px;
+        }
+    }
   </style>
 </head>
 <body>
   
   <div class="container">
     <div class="sidebar">
-        <h2>🎓 University Portal</h2>
+        <h2 style="color: white;">🎓 University Portal</h2>
         <p>A secure decentralized identity and access management system powered by the Ethereum blockchain.</p>
 
         <div class="status-panel">
-            <div id="status" class="status err" style="width: 100%;">Status: Wallet Disconnected.</div>
+            <div id="status" class="status err">Status: Wallet Disconnected.</div>
             
             <div style="margin-top: 15px;">
                 <strong style="color: white;">Current Account:</strong> 
