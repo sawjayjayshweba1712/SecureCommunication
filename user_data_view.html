@@ -3,271 +3,296 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Student Records (Admin/Teacher)</title>
-  
-  <!-- Ethers for Role Check -->
+  <title>Student Records</title>
+
+  <!-- Ethers.js -->
   <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  
+
   <style>
     :root {
-      --primary-color: #273c75;
-      --secondary-color: #40739e;
-      --bg-color: #f4f6fb;
-      --card-bg: #ffffff;
-      --text-color: #2f3640;
-      --success-color: #43a047;
-      --danger-color: #c23616;
-      --warning-color: #ffb300;
+      --primary: #273c75;
+      --secondary: #40739e;
+      --background: #f4f6fb;
+      --card: #ffffff;
+      --text: #2f3640;
+      --success: #43a047;
+      --danger: #c23616;
       --shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
     }
+
     body {
       margin: 0;
       font-family: "Poppins", sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-color);
+      background: var(--background);
+      color: var(--text);
       padding: 40px 20px;
     }
+
     .container {
       max-width: 1200px;
-      margin: 0 auto;
-      background: var(--card-bg);
-      border-radius: 15px;
+      margin: auto;
+      background: var(--card);
       padding: 30px;
+      border-radius: 15px;
       box-shadow: var(--shadow);
     }
+
+    /* Header */
     h1 {
-      color: var(--primary-color);
+      color: var(--primary);
       border-bottom: 2px solid #e0e6eb;
       padding-bottom: 10px;
       margin-top: 0;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 10px;
+      font-size: 26px;
     }
+
+    /* Buttons */
+    .btn-primary {
+      padding: 10px 18px;
+      background: var(--secondary);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 14px;
+      transition: 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: #5d8aa8;
+    }
+
+    /* Status Message */
     .status-message {
       padding: 15px;
       border-radius: 8px;
       margin-bottom: 20px;
-      font-weight: 600;
       text-align: center;
+      font-weight: 600;
     }
-    .status-denied { background-color: #ffebee; color: var(--danger-color); border: 1px solid #ffcdd2; }
-    .status-loading { background-color: #e3f2fd; color: var(--secondary-color); }
-    .status-success { background-color: #e8f5e9; color: var(--success-color); }
-    
+
+    .status-loading { background: #e3f2fd; color: var(--secondary); }
+    .status-success { background: #e8f5e9; color: var(--success); }
+    .status-error   { background: #ffebee; color: var(--danger); }
+
+    /* Table */
     .data-table {
       width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
+      border-collapse: collapse;
       margin-top: 20px;
-      border-radius: 12px;
+      font-size: 15px;
+      border-radius: 10px;
       overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
-    .data-table th, .data-table td {
-      padding: 12px 15px;
-      text-align: left;
-      font-size: 14px;
-      border-bottom: 1px solid #dfe4ea;
-    }
+
     .data-table th {
-      background-color: var(--primary-color);
+      background: var(--primary);
       color: white;
-      font-weight: 600;
+      padding: 12px;
+      text-align: left;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
-    .data-table tr:nth-child(even) { background-color: #f8f9fa; }
-    .data-table tr:hover { background-color: #eef2f7; }
 
-    .btn-back {
-      padding: 10px 15px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 500;
-      transition: background-color 0.2s;
-      background-color: var(--secondary-color);
-      color: white;
-      margin-right: 15px;
-      margin-bottom: 20px;
+    .data-table td {
+      padding: 12px;
+      border-bottom: 1px solid #e3e3e3;
     }
-    .btn-back:hover { background-color: #5d8aa8; }
-    
-    .data-source-info {
-        font-size: 12px;
-        color: #7f8fa6;
-        margin-top: -10px;
-        margin-bottom: 20px;
+
+    .data-table tr:nth-child(even) { background: #f8f9fa; }
+    .data-table tr:hover { background: #eef2f7; }
+
+    /* Info Text */
+    .info-text {
+      font-size: 12px;
+      color: #7f8fa6;
+      margin-top: -10px;
+      margin-bottom: 15px;
     }
-    .data-source-info a {
-        color: var(--secondary-color);
-        text-decoration: none;
-        font-weight: 600;
+
+    .info-text a {
+      color: var(--secondary);
+      font-weight: 600;
+      text-decoration: none;
     }
+
   </style>
 </head>
 <body>
 
-  <div class="container">
-    <button class="btn-back" onclick="window.location.href='secure.html'">← Back to Public Wall</button>
-    
-    <h1>
-      <span>🧑‍🎓 Student Records (Read-Only)</span>
-    </h1>
-    
-    <p class="data-source-info">
-        Data source: <span id="dataSourceLink">Loading source...</span>. Access is controlled by <code style="color:var(--primary-color);">AuthManager.sol</code> role check.
-    </p>
+<div class="container">
 
-    <div id="accessStatus" class="status-message status-loading">
-        Initializing and checking user role...
-    </div>
+  <button class="btn-primary" onclick="window.location.href='secure.html'">← Back</button>
+  
+  <h1>
+    🧑‍🎓 Student Records (Read Only)
+  </h1>
 
-    <div id="dataContent" style="display: none;">
-        <p>Your Role: <strong id="userRole">...</strong> | Wallet: <strong id="walletAddress">...</strong></p>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Age</th>
-                    <th>Address</th>
-                    <th>Enrolled Course</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody id="studentTableBody">
-                <tr><td colspan="5" style="text-align: center;">Fetching student records from GitHub...</td></tr>
-            </tbody>
-        </table>
-    </div>
+  <p class="info-text">
+    Data source: <span id="dataSourceText">Loading...</span><br>
+    Access controlled by <code style="color: var(--primary);">AuthManager.sol</code>
+  </p>
+
+  <!-- ACCESS MESSAGE -->
+  <div id="statusBox" class="status-message status-loading">
+    Checking wallet & user role...
   </div>
 
-  <script>
-    // --- BLOCKCHAIN CONFIG (from AuthManager.sol) ---
-    // NOTE: Replace with your actual AuthManager contract address
-    const CONTRACT_ADDRESS = "0xd1968a1b2250233500D4dd3967012928e87Ef66c"; 
-    const AUTH_ABI = [ "function getRole(address user) view returns (string memory)" ];
-    const ALLOWED_ROLES = ["admin", "teacher"];
+  <!-- DATA CONTENT -->
+  <div id="dataSection" style="display:none;">
+    <p>
+      Role: <strong id="userRoleText">...</strong> |
+      Wallet: <strong id="walletText">...</strong>
+    </p>
 
-    // --- DATA CONFIG (Public GitHub JSON) ---
-    // This is a publicly accessible URL pointing to a raw JSON file on GitHub.
-    const GITHUB_JSON_URL = "https://gist.githubusercontent.com/google-gemini/c6b3e7f226a2731804b4c102a0a2f1c8/raw/student_data.json";
-    
-    let currentAccount, userRole;
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Age</th>
+          <th>Address</th>
+          <th>Course</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <tr><td colspan="5" style="text-align:center;">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
 
-    // --- UTILITY FUNCTIONS ---
-    function setStatus(message, isSuccess = true, isLoading = false) {
-        const statusEl = document.getElementById('accessStatus');
-        statusEl.textContent = message;
-        statusEl.className = 'status-message ' + (
-            isLoading ? 'status-loading' : 
-            isSuccess ? 'status-success' : 
-            'status-denied'
-        );
+</div>
+
+<script>
+/* -------------------------------------------------
+   CONFIGURATION
+-------------------------------------------------- */
+
+const CONTRACT_ADDRESS = "0xd1968a1b2250233500D4dd3967012928e87Ef66c";
+const AUTH_ABI = ["function getRole(address user) view returns (string memory)"];
+const ALLOWED_ROLES = ["admin", "teacher"];
+
+const JSON_URL = "https://gist.githubusercontent.com/google-gemini/c6b3e7f226a2731804b4c102a0a2f1c8/raw/student_data.json";
+
+/* -------------------------------------------------
+   DOM HELPERS
+-------------------------------------------------- */
+
+function setStatus(message, type = "loading") {
+  const el = document.getElementById("statusBox");
+  el.textContent = message;
+  el.className = `status-message status-${type}`;
+}
+
+function shorten(addr) {
+  return addr ? addr.slice(0,6) + "..." + addr.slice(-4) : "";
+}
+
+/* -------------------------------------------------
+   ROLE & WALLET CHECK
+-------------------------------------------------- */
+
+async function checkAccess() {
+  if (!window.ethereum) {
+    return setStatus("MetaMask not detected.", "error");
+  }
+
+  setStatus("Connecting to wallet...", "loading");
+
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    const signer = provider.getSigner();
+    const wallet = await signer.getAddress();
+
+    document.getElementById("walletText").textContent = shorten(wallet);
+
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, AUTH_ABI, provider);
+    const role = (await contract.getRole(wallet)).toLowerCase();
+
+    document.getElementById("userRoleText").textContent = role || "member";
+    document.getElementById("dataSourceText").innerHTML = `<a href="${JSON_URL}" target="_blank">GitHub JSON</a>`;
+
+    // Access allowed
+    if (ALLOWED_ROLES.includes(role)) {
+      setStatus(`Access granted (${role.toUpperCase()})`, "success");
+      document.getElementById("dataSection").style.display = "block";
+      loadStudentData();
+    } 
+    // Access denied
+    else {
+      setStatus(`Access denied. Your role: ${role}`, "error");
+      document.getElementById("dataSection").style.display = "none";
     }
 
-    function shortAddr(a) {
-        return a ? `${a.slice(0, 6)}...${a.slice(-4)}` : "N/A";
-    }
+  } catch (err) {
+    console.error(err);
+    setStatus("Failed to connect or fetch role: " + err.message, "error");
+  }
+}
 
-    // --- CORE LOGIC ---
+/* -------------------------------------------------
+   FETCH STUDENT DATA
+-------------------------------------------------- */
 
-    // 1. Connect Wallet and Check Role
-    async function initWalletAndCheckRole() {
-        if (typeof window.ethereum === "undefined") {
-            setStatus("MetaMask not found. Cannot verify role.", false);
-            return;
-        }
+async function loadStudentData() {
+  const body = document.getElementById("tableBody");
+  body.innerHTML = `<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>`;
 
-        try {
-            setStatus("Connecting wallet and checking role...", true, true);
-            const provider = new ethers.providers.Web3Provider(window.ethereum);
-            await provider.send("eth_requestAccounts", []);
-            
-            currentAccount = await provider.getSigner().getAddress();
-            document.getElementById('walletAddress').textContent = shortAddr(currentAccount);
-            document.getElementById('dataSourceLink').innerHTML = `<a href="${GITHUB_JSON_URL}" target="_blank">Static GitHub JSON</a>`;
+  try {
+    const res = await fetch(JSON_URL);
+    if (!res.ok) throw new Error("Network error: " + res.status);
 
-            const contract = new ethers.Contract(CONTRACT_ADDRESS, AUTH_ABI, provider);
-            
-            // Call the blockchain to get the current user's role
-            userRole = (await contract.getRole(currentAccount)).toLowerCase();
-            document.getElementById('userRole').textContent = userRole || 'member (default)';
+    const data = await res.json();
+    renderTable(data);
 
-            if (ALLOWED_ROLES.includes(userRole)) {
-                // Access Granted
-                setStatus(`Access Granted! Role: ${userRole.toUpperCase()}`, true);
-                document.getElementById('dataContent').style.display = 'block';
-                // 2. Fetch and render data
-                await fetchStudentRecords();
-            } else {
-                // Access Denied
-                setStatus(`Access Denied. Your role (${userRole || 'member'}) does not permit viewing this data.`, false);
-                document.getElementById('dataContent').style.display = 'none';
-            }
+  } catch (err) {
+    console.error(err);
+    body.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--danger);">Error loading data.</td></tr>`;
+  }
+}
 
-        } catch (error) {
-            console.error("Connection/Role check error:", error);
-            setStatus(`Connection/Contract Error: ${error.message || 'Check console. Ensure AuthManager is deployed.'}`, false);
-        }
-    }
+/* -------------------------------------------------
+   RENDER TABLE
+-------------------------------------------------- */
 
-    // 2. Fetch Data from GitHub
-    async function fetchStudentRecords() {
-        const tbody = document.getElementById('studentTableBody');
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center;">Fetching records...</td></tr>`;
+function renderTable(records) {
+  const body = document.getElementById("tableBody");
+  body.innerHTML = "";
 
-        try {
-            const response = await fetch(GITHUB_JSON_URL);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+  if (!Array.isArray(records) || records.length === 0) {
+    return body.innerHTML = `<tr><td colspan="5" style="text-align:center;">No records found.</td></tr>`;
+  }
 
-            const records = await response.json();
-            
-            if (!Array.isArray(records)) {
-                throw new Error("Data retrieved is not a list/array.");
-            }
+  records.forEach(r => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${r.name || "N/A"}</td>
+      <td>${r.age || "N/A"}</td>
+      <td>${r.address || "N/A"}</td>
+      <td>${r.course || "N/A"}</td>
+      <td>${r.status || "N/A"}</td>
+    `;
+    body.appendChild(row);
+  });
+}
 
-            renderTable(records);
+/* -------------------------------------------------
+   STARTUP
+-------------------------------------------------- */
 
-        } catch (error) {
-            console.error("GitHub Fetch failed:", error);
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--danger-color);">Error fetching data: ${error.message}. Check GitHub URL.</td></tr>`;
-        }
-    }
+window.addEventListener("DOMContentLoaded", checkAccess);
 
-    // 3. Render Data to UI
-    function renderTable(records) {
-        const tbody = document.getElementById('studentTableBody');
-        tbody.innerHTML = ''; 
+if (window.ethereum) {
+  ethereum.on("accountsChanged", () => location.reload());
+  ethereum.on("chainChanged", () => location.reload());
+}
+</script>
 
-        if (records.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--secondary-color);">No student records found in the GitHub file.</td></tr>`;
-            return;
-        }
-
-        records.forEach(record => {
-            const row = tbody.insertRow();
-            row.insertCell().textContent = record.name || 'N/A';
-            row.insertCell().textContent = record.age || 'N/A';
-            row.insertCell().textContent = record.address || 'N/A';
-            row.insertCell().textContent = record.course || 'N/A';
-            row.insertCell().textContent = record.status || 'N/A';
-        });
-    }
-
-    // --- STARTUP ---
-    window.addEventListener("DOMContentLoaded", initWalletAndCheckRole);
-    
-    // Add event listeners for MetaMask account/network changes
-    if (typeof window.ethereum !== 'undefined') {
-        window.ethereum.on('accountsChanged', () => window.location.reload());
-        window.ethereum.on('chainChanged', () => window.location.reload());
-    }
-  </script>
 </body>
 </html>
