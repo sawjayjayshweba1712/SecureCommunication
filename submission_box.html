@@ -211,28 +211,16 @@
     const AUTH_ABI = [ "function getRole(address user) view returns (string memory)" ];
     const ALLOWED_ROLES = ["admin", "teacher"];
 
-    // --- FIREBASE CONFIG (You must replace this with your actual config!) ---
-    // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyDIg9PBnO2azEIdx51RUhfHBclt2lYxHwU",
-    authDomain: "student-portal-1f1ee.firebaseapp.com",
-    projectId: "student-portal-1f1ee",
-    storageBucket: "student-portal-1f1ee.firebasestorage.app",
-    messagingSenderId: "256625411080",
-    appId: "1:256625411080:web:f8fc44201604e769effdbd",
-    measurementId: "G-XCZ2Q2841X"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyDIg9PBnO2azEIdx51RUhfHBclt2lYxHwU",
+  authDomain: "student-portal-1f1ee.firebaseapp.com",
+  projectId: "student-portal-1f1ee",
+  storageBucket: "student-portal-1f1ee.firebasestorage.app",
+  messagingSenderId: "256625411080",
+  appId: "1:256625411080:web:f8fc44201604e769effdbd",
+  measurementId: "G-XCZ2Q2841X"
+};
 
     let db;
     let currentAccount, userRole;
