@@ -1,0 +1,318 @@
+:root {
+  --primary-color: #273c75;
+  --primary-hover: #40739e;
+  --bg-color: #f4f6fb;
+  --card-bg: #ffffff;
+  --text-color: #2f3640;
+  --text-light: #7f8fa6;
+  --border-color: #dfe4ea;
+  --success-color: #43a047;
+  --danger-color: #c23616;
+  --danger-hover: #e84118;
+  --shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+  --header-height: 60px;
+}
+body {
+  margin: 0;
+  font-family: "Poppins", sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  padding-top: var(--header-height); 
+}
+header {
+  position: fixed; 
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--header-height);
+  z-index: 1000; 
+  background-color: var(--primary-color);
+  color: white;
+  padding: 18px 30px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  box-sizing: border-box; 
+}
+.container {
+  padding: 30px 10%; 
+  margin: 0 auto; 
+}
+.btn {
+  font-family: "Poppins", sans-serif;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+}
+.btn-danger {
+  background-color: var(--danger-color);
+  color: white;
+}
+.btn-danger:hover {
+  background-color: var(--danger-hover);
+}
+
+#public-wall {
+  max-width: 1200px; 
+  width: 100%;
+  margin: 20px auto;
+  background: var(--card-bg);
+  border-radius: 15px;
+  padding: 30px;
+  box-shadow: var(--shadow);
+}
+#public-wall h2 {
+  color: var(--primary-color);
+  font-size: 24px;
+  margin-top: 0;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 10px;
+}
+
+/* Wallet Area */
+#wallet-info {
+  background-color: var(--bg-color);
+  padding: 15px 20px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+#wallet-info span {
+  font-size: 14px;
+  color: var(--text-light);
+}
+#wallet-info strong {
+  font-size: 16px;
+  color: var(--text-color);
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+/* Post Composer - Now a modal-like structure */
+#postComposer {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  max-width: 600px;
+  background: var(--card-bg);
+  border-radius: 15px;
+  padding: 25px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  z-index: 1010;
+  display: none; /* Hide by default */
+}
+#postComposer textarea {
+  width: 100%;
+  height: 150px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  outline: none;
+  font-size: 15px;
+  font-family: "Poppins", sans-serif;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+#composer-footer {
+  display: flex;
+  justify-content: flex-end; 
+  gap: 10px;
+  align-items: center;
+  margin-top: 15px;
+}
+#postingStatus {
+  font-size: 14px;
+  font-weight: 500;
+  margin-right: auto; 
+}
+#postingStatus.success { color: var(--success-color); }
+#postingStatus.error { color: var(--danger-color); }
+
+/* Floating Action Button (FAB) */
+#fabButton {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  color: white;
+  font-size: 30px;
+  line-height: 60px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  z-index: 999;
+  display: none; 
+}
+
+/* Post List */
+#postList {
+  margin-top: 20px;
+  min-height: 200px; 
+}
+.post-item {
+  border: 1px solid var(--border-color);
+  padding: 18px;
+  border-radius: 12px;
+  margin-bottom: 15px;
+  background: #fdfdfd;
+  word-wrap: break-word;
+  position: relative; 
+}
+
+.delete-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+#no-posts {
+  text-align: center;
+  padding: 30px;
+  color: var(--text-light);
+}
+.post-comments-section {
+  margin-top: 15px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-color);
+}
+.comment-list {
+  background: #fcfcfc;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  max-height: 150px; 
+  overflow-y: auto;
+}
+.comment-item {
+  padding: 5px 0;
+  font-size: 14px;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+.comment-composer {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+.comment-composer input {
+  flex-grow: 1;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-family: "Poppins", sans-serif;
+}
+.btn-reaction {
+  padding: 5px 10px !important; 
+  font-size: 13px !important;
+  margin-top: 10px;
+}
+.status-message {
+  font-size: 12px;
+  margin-top: 5px;
+  display: block;
+  font-weight: 500;
+}
+.status-message.success { color: var(--success-color); }
+.status-message.error { color: var(--danger-color); }
+
+footer {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-light);
+  font-size: 13px;
+  margin-top: 20px;
+}
+
+/* --- DROPDOWN ANIMATION STYLES --- */
+.header-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+#menuButton {
+  background-color: var(--primary-hover);
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.dropdown-content {
+  /* Base state for animation */
+  position: absolute;
+  background-color: var(--card-bg);
+  min-width: 180px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 1001;
+  right: 0;
+  border-radius: 8px;
+  padding: 0; /* Important for animation start state */
+  overflow: hidden; 
+
+  /* Animation properties */
+  max-height: 0; 
+  opacity: 0; 
+  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, padding 0.3s ease-in-out; 
+  visibility: hidden; 
+}
+
+.dropdown-content.show {
+  /* End state for animation */
+  max-height: 300px; /* Needs to be larger than content height */
+  opacity: 1;
+  padding: 5px 0; /* Apply internal padding here */
+  visibility: visible;
+}
+
+/* Links inside the dropdown */
+.dropdown-content a {
+  color: var(--text-color);
+  padding: 12px 16px;
+  text-decoration: none;
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.dropdown-content a:hover:not(.btn-danger) {
+  background-color: var(--bg-color);
+}
+
+/* Specific styling for Logout button in the dropdown */
+.dropdown-content a.btn-danger {
+  background-color: var(--danger-color);
+  color: white;
+  text-align: center;
+  margin-top: 5px; 
+}
+
+.dropdown-content a.btn-danger:hover {
+  background-color: var(--danger-hover);
+}
