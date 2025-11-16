@@ -9,7 +9,8 @@
   
   <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script> <style>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-storage.js"></script> <style>
     :root {
       --primary-color: #273c75;
       --secondary-color: #40739e;
@@ -132,7 +133,7 @@
         font-size: 12px;
     }
 
-    /* Modal for Creating Box */
+    /* Modal Styling (For both Create Box and Submission) */
     .modal {
         position: fixed;
         top: 0;
@@ -153,7 +154,9 @@
         max-width: 500px;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     }
-    .modal-content input, .modal-content textarea {
+    .modal-content input[type="text"], 
+    .modal-content input[type="file"],
+    .modal-content textarea {
         width: 100%;
         padding: 10px;
         margin-bottom: 15px;
@@ -161,6 +164,11 @@
         border-radius: 6px;
         box-sizing: border-box;
         font-family: "Poppins", sans-serif;
+    }
+    #submissionStatus {
+        margin-top: 10px;
+        font-size: 13px;
+        font-weight: 500;
     }
   </style>
 </head>
@@ -203,29 +211,47 @@
         </div>
     </div>
   </div>
+  
+  <div id="submissionModal" class="modal">
+    <div class="modal-content">
+        <h2 id="submissionModalTitle">Submit File</h2>
+        <p>Submission for: <strong id="submissionAssignmentTitle"></strong></p>
+        
+        <label for="fileInput" style="display: block; margin-bottom: 5px;">Select File:</label>
+        <input type="file" id="fileInput" />
+        
+        <input type="text" id="submissionNote" placeholder="Optional: Add a note for the teacher" />
+
+        <div id="submissionStatus" class="status-message" style="display:none;"></div>
+        
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+            <button class="btn-back" onclick="closeSubmissionModal()">Cancel</button>
+            <button class="btn-primary" id="uploadBtn" onclick="handleFileUpload()">Upload & Submit</button>
+        </div>
+    </div>
+  </div>
 
   <script>
     // --- BLOCKCHAIN CONFIG (from AuthManager.sol) ---
-    // NOTE: This MUST match the contract address used in dashboard.html and admin.html
     const CONTRACT_ADDRESS = "0xd1968a1b2250233500D4dd3967012928e87Ef66c"; 
     const AUTH_ABI = [ "function getRole(address user) view returns (string memory)" ];
     const ALLOWED_ROLES = ["admin", "teacher"];
 
-    // --- ⚠️ FIREBASE CONFIG (DUMMY DATA - REPLACE THESE!) ⚠️ ---
+    // --- ⚠️ FIREBASE CONFIG (REPLACE THESE!) ⚠️ ---
     // You MUST replace these values with your actual Firebase project configuration.
-    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyDIg9PBnO2azEIdx51RUhfHBclt2lYxHwU",
-  authDomain: "student-portal-1f1ee.firebaseapp.com",
-  projectId: "student-portal-1f1ee",
-  storageBucket: "student-portal-1f1ee.firebasestorage.app",
-  messagingSenderId: "256625411080",
-  appId: "1:256625411080:web:f8fc44201604e769effdbd",
-  measurementId: "G-XCZ2Q2841X"
-};
+    const firebaseConfig = {
+        apiKey: "AIzaSyDIg9PBnO2azEIdx51RUhfHBclt2lYxHwU",
+        authDomain: "student-portal-1f1ee.firebaseapp.com",
+        projectId: "student-portal-1f1ee",
+        storageBucket: "student-portal-1f1ee.appspot.com", // Changed to use .appspot.com for Storage
+        messagingSenderId: "256625411080",
+        appId: "1:256625411080:web:f8fc44201604e769effdbd",
+        measurementId: "G-XCZ2Q2841X"
+    };
 
-    let db, auth; // Firebase instances (Firestore and Auth)
+    let db, auth, storage; // Firebase instances
     let currentAccount, userRole;
+    let currentSubmissionBoxId; // State variable for the active submission box
 
     // --- UTILITY FUNCTIONS ---
     function setStatus(message, isSuccess = true, isLoading = false) {
@@ -238,10 +264,18 @@ const firebaseConfig = {
         );
     }
     
+    function setSubmissionStatus(message, isSuccess = true) {
+        const statusEl = document.getElementById('submissionStatus');
+        statusEl.style.display = 'block';
+        statusEl.textContent = message;
+        statusEl.className = 'status-message ' + (isSuccess ? 'status-success' : 'status-denied');
+    }
+
     function shortAddr(a) {
         return a ? `${a.slice(0, 6)}...${a.slice(-4)}` : "N/A";
     }
 
+    // Modal Handlers
     function openCreateModal() {
         document.getElementById('createBoxModal').style.display = 'flex';
         document.getElementById('boxTitle').focus();
@@ -253,9 +287,16 @@ const firebaseConfig = {
         document.getElementById('boxDescription').value = '';
     }
 
+    function closeSubmissionModal() {
+        document.getElementById('submissionModal').style.display = 'none';
+        document.getElementById('fileInput').value = ''; // Clear file selection
+        document.getElementById('submissionNote').value = '';
+        document.getElementById('submissionStatus').style.display = 'none';
+        currentSubmissionBoxId = null;
+    }
+
     // --- CORE LOGIC ---
 
-    // 1. Initialize Firebase, Auth, and Check Role
     async function init() {
         if (typeof window.ethereum === "undefined") {
             setStatus("MetaMask not found. Cannot verify role.", false);
@@ -266,13 +307,13 @@ const firebaseConfig = {
         try {
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
-            auth = firebase.auth(); // Initialize Auth
+            auth = firebase.auth(); 
+            storage = firebase.storage(); // Initialize Storage
             
-            // CRITICAL FIX: Sign in the user anonymously to satisfy Firebase Security Rules
             await auth.signInAnonymously();
             
         } catch (e) {
-            console.error("Firebase Initialization Failed: Check your firebaseConfig object.", e);
+            console.error("Firebase Initialization Failed:", e);
             setStatus(`Firebase initialization failed: ${e.message}`, false);
             return;
         }
@@ -293,15 +334,12 @@ const firebaseConfig = {
             document.getElementById('accessInfo').style.display = 'flex';
 
             if (ALLOWED_ROLES.includes(userRole)) {
-                // Access Granted - Teacher/Admin can create boxes
                 setStatus(`Access Granted! Role: ${userRole.toUpperCase()}. You can create submission boxes.`, true);
                 document.getElementById('createBoxBtn').style.display = 'inline-block';
             } else {
-                // Access Granted (Read-Only) for members
                 setStatus(`Access Granted (Read-Only). Your role (${userRole || 'member'}) does not permit creating boxes.`, true);
             }
             
-            // 1.3 Load existing boxes using the real-time listener
             loadSubmissionBoxes();
 
         } catch (error) {
@@ -310,7 +348,7 @@ const firebaseConfig = {
         }
     }
 
-    // 2. CRUD: Create Submission Box
+    // CRUD: Create Submission Box (No change from previous step)
     async function createSubmissionBox() {
         if (!ALLOWED_ROLES.includes(userRole)) {
             alert("Permission denied. Only Admins and Teachers can create submission boxes.");
@@ -334,19 +372,109 @@ const firebaseConfig = {
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
-            // This write operation is now possible because the user is signed in anonymously to Firebase
             await db.collection("submissionBoxes").add(newBox);
-            alert("Submission box created successfully!");
             closeCreateModal();
-            // The loadSubmissionBoxes listener will handle the UI update automatically.
-
         } catch (error) {
             console.error("Error creating submission box:", error);
             alert(`Failed to create submission box. Check console. Error: ${error.message}`);
         }
     }
+    
+    // UI: Open Submission Modal
+    async function openSubmission(boxId) {
+        currentSubmissionBoxId = boxId;
+        
+        // Fetch the box title for display
+        try {
+            const doc = await db.collection("submissionBoxes").doc(boxId).get();
+            if (doc.exists) {
+                document.getElementById('submissionAssignmentTitle').textContent = doc.data().title;
+            } else {
+                document.getElementById('submissionAssignmentTitle').textContent = "Assignment Not Found";
+            }
+        } catch (error) {
+            console.error("Error fetching assignment title:", error);
+            document.getElementById('submissionAssignmentTitle').textContent = "Error Loading Title";
+        }
+        
+        document.getElementById('submissionModal').style.display = 'flex';
+        document.getElementById('fileInput').focus();
+    }
 
-    // 3. CRUD: Read Submission Boxes (Real-time Listener)
+    // CRUD: Handle File Upload to Storage and Metadata to Firestore
+    async function handleFileUpload() {
+        if (!currentAccount) {
+            setSubmissionStatus("Wallet not connected.", false);
+            return;
+        }
+
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+        const note = document.getElementById('submissionNote').value.trim();
+        const uploadBtn = document.getElementById('uploadBtn');
+
+        if (!file) {
+            setSubmissionStatus("Please select a file to upload.", false);
+            return;
+        }
+        
+        uploadBtn.disabled = true;
+        setSubmissionStatus(`Uploading ${file.name}...`, true);
+
+        try {
+            // 1. Prepare Storage path: submissions/{boxId}/{user_address}_{timestamp}_{filename}
+            const filename = file.name;
+            const timestamp = Date.now();
+            const storagePath = `submissions/${currentSubmissionBoxId}/${currentAccount}_${timestamp}_${filename}`;
+            
+            const storageRef = storage.ref(storagePath);
+            const uploadTask = storageRef.put(file);
+
+            // 2. Monitor upload progress (Optional, but good UX)
+            uploadTask.on(firebase.storage.TaskEvent.STATE_CHANGED, 
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    setSubmissionStatus(`Upload is ${Math.round(progress)}% complete...`, true);
+                }, 
+                (error) => {
+                    throw new Error(`Storage Upload Failed: ${error.message}`);
+                }, 
+                async () => {
+                    // 3. Get download URL and save metadata to Firestore
+                    const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+                    
+                    const submissionData = {
+                        boxId: currentSubmissionBoxId,
+                        submitter: currentAccount,
+                        submitterRole: userRole || 'member',
+                        submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        fileName: filename,
+                        fileSize: file.size,
+                        filePath: storagePath,
+                        fileURL: downloadURL,
+                        note: note
+                    };
+                    
+                    // Save metadata to a new collection: 'submissions'
+                    await db.collection('submissions').add(submissionData);
+
+                    setSubmissionStatus("✅ File submitted successfully!", true);
+                    
+                    // Close modal after a short delay
+                    setTimeout(closeSubmissionModal, 2000);
+                }
+            );
+
+        } catch (error) {
+            console.error("Submission Failed:", error);
+            setSubmissionStatus(`Submission Failed: ${error.message}`, false);
+        } finally {
+            uploadBtn.disabled = false;
+        }
+    }
+
+
+    // CRUD: Read Submission Boxes (Real-time Listener - No change)
     function loadSubmissionBoxes() {
         const listEl = document.getElementById('submission-box-list');
         const loadingMsg = document.getElementById('loadingMessage');
@@ -357,7 +485,7 @@ const firebaseConfig = {
         db.collection("submissionBoxes")
           .orderBy("createdAt", "desc")
           .onSnapshot((querySnapshot) => {
-            listEl.innerHTML = ''; // Clear and rebuild on every snapshot
+            listEl.innerHTML = ''; 
             
             if (querySnapshot.empty) {
                 listEl.innerHTML = `
@@ -376,15 +504,14 @@ const firebaseConfig = {
             console.error("Error loading submission boxes:", error);
             listEl.innerHTML = `
                 <p style="grid-column: 1 / -1; text-align: center; color: var(--danger-color);">
-                    Error: Could not load data from Firebase. Check console.
+                    Error: Could not load data from Firebase. Check console/network.
                 </p>`;
           });
     }
 
-    // 4. Render UI
+    // UI: Render Box Item (Uses new openSubmission function)
     function appendBoxToUI(box, id) {
         const listEl = document.getElementById('submission-box-list');
-        // Handle timestamp conversion carefully as it might be 'serverTimestamp' initially
         const boxDate = box.createdAt ? box.createdAt.toDate().toLocaleDateString() : 'Saving...';
         
         const el = document.createElement("div");
@@ -400,11 +527,6 @@ const firebaseConfig = {
         listEl.appendChild(el);
     }
     
-    // 5. Placeholder for submission/view logic
-    function openSubmission(boxId) {
-        alert(`Opening submission box: ${boxId}. This is where you'd implement the file upload logic using Firebase Storage.`);
-    }
-
     // --- STARTUP & METAMASK LISTENERS ---
     window.addEventListener("DOMContentLoaded", init);
     
