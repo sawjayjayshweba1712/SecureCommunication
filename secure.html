@@ -279,12 +279,13 @@
       display: none; /* Hidden by default */
       position: absolute;
       background-color: var(--card-bg);
-      min-width: 160px;
+      min-width: 180px; /* Slightly wider to accommodate new link names */
       box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
       z-index: 1001; /* Above other elements */
       right: 0; /* Align to the right of the button */
       border-radius: 8px;
       overflow: hidden; /* Ensures rounded corners */
+      padding: 5px 0; /* Internal padding */
     }
 
     /* Links inside the dropdown */
@@ -298,7 +299,7 @@
       transition: background-color 0.2s;
     }
 
-    .dropdown-content a:hover {
+    .dropdown-content a:hover:not(.btn-danger) {
       background-color: var(--bg-color);
     }
     
@@ -307,6 +308,7 @@
       background-color: var(--danger-color);
       color: white;
       text-align: center;
+      margin-top: 5px; /* Separate from other links */
     }
 
     .dropdown-content a.btn-danger:hover {
@@ -325,17 +327,29 @@
   <header>
     <span> 🎓University Portal</span>
     
+    <!-- MODIFIED HEADER CONTROLS START -->
     <div class="header-dropdown">
       <button class="btn btn-primary" id="menuButton" onclick="toggleDropdown()">
         Menu ▼
       </button>
       <div class="dropdown-content" id="dropdownMenu">
-        <a href="admin.html" style="background-color: #ffb300; color: #333;">🔑 Admin Panel</a>
-        <a href="user_data_view.html" style="background-color: var(--success-color); color: white;">📝 Student Info</a>
+        
+        <!-- 1. Admin Panel -->
+        <a href="admin.html" style="color: #333;">🔑 Admin Panel</a>
+        
+        <!-- 2. Submission Portal (New Firebase Page) -->
+        <a href="submission_box.html" style="background-color: var(--primary-color); color: white;">📁 Submission Portal</a>
+
+        <!-- 3. Static Student Info (Original Page) -->
+        <a href="user_data_view.html" style="background-color: var(--success-color); color: white;">📝 Student Records (Static)</a>
+
+        <!-- 4. Logout -->
         <a href="#" class="btn-danger" onclick="logout()">Logout</a>
       </div>
     </div>
-    </header>
+    <!-- MODIFIED HEADER CONTROLS END -->
+
+  </header>
 
   <div class="container">
     <div id="public-wall">
