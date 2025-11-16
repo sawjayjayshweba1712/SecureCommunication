@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Student Data View - Admin/Teacher Only</title>
   <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <!-- Firebase Core Imports for live data storage -->
   <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"></script>
   <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"></script>
   <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"></script>
@@ -65,6 +66,7 @@
         <table id="userDataTable">
             <thead>
                 <tr>
+                    <!-- TABLE HEADERS MATCHING THE USER'S REQUESTED LAYOUT -->
                     <th>Address</th>
                     <th>Name / Age</th>
                     <th>Role (On-Chain)</th>
@@ -82,6 +84,7 @@
 
   </div>
   
+  <!-- Modal for Add/Edit -->
   <div id="editModal" class="modal-backdrop" onclick="closeModal()">
     <div class="modal" onclick="event.stopPropagation()">
       <h2 id="modalTitle">Add New Student</h2>
@@ -110,7 +113,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, query, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // --- GLOBAL VARIABLES (Provided by Canvas Environment) ---
@@ -187,7 +190,7 @@
             age: parseInt(age),
             course,
             status,
-            // Mock data fields inserted to match the old table columns:
+            // Mock/Display fields to fit the table structure:
             name: `Student ID ${shortAddr(address)}`, 
             profileCID: 'N/A', 
             last_access: new Date().toLocaleString(), 
@@ -233,11 +236,9 @@
 
     async function getOnChainRole(address) {
         try {
-            // We use the contract instance created during init
             const role = await contract.getRole(address);
             return role || 'member';
         } catch (e) {
-            // If the user isn't registered, this fails, so we default
             return 'member'; 
         }
     }
@@ -323,18 +324,19 @@
 
     async function init() {
         if (typeof window.ethereum === "undefined") {
-            setStatus("MetaMask not installed.", false);
+            setStatus("MetaMask not installed. Please install it and refresh.", false);
             return;
         }
 
         try {
+            // 1. Firebase Initialization & Authentication
+            setStatus('Initializing Firebase services...', true);
             setLogLevel('debug');
             const firebaseApp = initializeApp(firebaseConfig);
             auth = getAuth(firebaseApp);
             db = getFirestore(firebaseApp);
 
-            // 1. Firebase Authentication
-            setStatus('Authenticating with Firebase...', true);
+            // Authentication with Firebase (silent or token-based)
             if (initialAuthToken) {
                 await signInWithCustomToken(auth, initialAuthToken);
             } else {
@@ -345,14 +347,17 @@
             // 2. Ethers & Role Check
             setStatus('Connecting wallet and verifying role...', true);
             ethersProvider = new ethers.providers.Web3Provider(window.ethereum);
+            
+            // Request accounts (this is usually where a failure happens if MetaMask is locked)
             await ethersProvider.send("eth_requestAccounts", []);
             currentEthAccount = await ethersProvider.getSigner().getAddress();
             
             contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, ethersProvider);
             
+            // Check role on the blockchain
             const userRole = await contract.getMyRole({ from: currentEthAccount });
             
-            // 3. Authorization Check
+            // 3. Authorization Check and Data Loading
             if (userRole === 'admin' || userRole === 'teacher') {
                 el('userRole').textContent = userRole.toUpperCase();
                 setStatus(`Access Granted. Role: ${userRole.toUpperCase()}. Loading student data...`, true);
@@ -363,8 +368,18 @@
             }
 
         } catch (error) {
-            console.error("Initialization Error:", error);
-            setStatus(`Critical Error: Could not initialize or connect. ${error.message}`, false);
+            console.error("Critical Initialization Error:", error);
+            
+            let displayError = 'Unknown error during startup.';
+            if (error.code === 4001) {
+                displayError = 'MetaMask connection rejected by user.';
+            } else if (error.message.includes("network")) {
+                 displayError = 'Connection failed. Check MetaMask network and ensure the contract address is correct.';
+            } else {
+                displayError = `Initialization failed. Check console for details.`;
+            }
+
+            setStatus(`ERROR: ${displayError}`, false);
         }
     }
 
