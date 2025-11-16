@@ -3,19 +3,20 @@
 <head> 
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Blockchain Auth - Portal</title>
+  <title>University Portal - Blockchain Login</title>
   <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   
   <style>
-    /* 1. Global Reset and Font */
+    /* --- NEW MODERN FULL-SCREEN STYLES --- */
     :root {
-      --primary-blue: #1a73e8; /* Consistent primary color */
+      --primary-blue: #1a73e8; 
       --secondary-dark: #34476a;
       --bg-color: #f0f4f8; /* Light gray-blue background */
       --card-bg: #ffffff;
       --text-color: #1e293b;
+      --text-light: #64748b;
       --success: #28a745;
       --danger: #dc3545;
       --warning: #ffb300;
@@ -23,35 +24,102 @@
     }
     body { 
         font-family: 'Inter', sans-serif; 
-        padding: 40px 20px; 
+        margin: 0;
         background: var(--bg-color); 
         color: var(--text-color);
+        display: flex;
+        min-height: 100vh;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    /* Main Container (Simulating the clean central panel) */
+    .container {
+        display: flex;
+        width: 100%;
+        max-width: 1100px;
+        min-height: 700px;
+        background: var(--card-bg);
+        border-radius: 16px;
+        box-shadow: var(--shadow-lift);
+        overflow: hidden;
     }
     
-    /* 2. Enhanced Card Style */
-    .card { 
-        max-width:700px; 
-        margin:auto; 
-        background:var(--card-bg); 
-        padding:35px; 
-        border-radius:12px; 
-        box-shadow: var(--shadow-lift); 
-        border: 1px solid #e0e6eb;
+    /* Left Sidebar for Status/Branding */
+    .sidebar {
+        width: 35%;
+        padding: 40px;
+        background-color: var(--secondary-dark); /* Dark background for contrast */
+        color: white;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }
+    .sidebar h2 {
+        font-size: 2rem;
+        font-weight: 800;
+        margin-bottom: 20px;
+        color: var(--primary-blue);
+    }
+    .sidebar p {
+        color: #b0bec5;
+        font-size: 1.1em;
+    }
+    .status-panel {
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        margin-top: 30px;
+        width: 100%;
+    }
+    .status-panel strong {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 0.9em;
+        color: #cfd8dc;
+    }
+    #currentAccount {
+        font-family: monospace;
+        word-break: break-all;
+    }
+
+    /* Right Content Area for Forms/Actions */
+    .content {
+        flex-grow: 1;
+        padding: 50px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
     h1 { 
-        text-align:center; 
-        color:var(--primary-blue); 
-        font-weight: 700;
-        margin-bottom: 25px;
-    }
-    h3 { 
-        margin-top: 30px; 
-        border-top: 1px solid #e0e6eb; 
-        padding-top: 20px; 
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 10px;
         color: var(--secondary-dark);
-        font-weight: 600;
-        font-size: 1.25rem;
     }
+    .welcome-text {
+        color: var(--text-light);
+        margin-bottom: 40px;
+        font-size: 1.1em;
+    }
+    
+    /* Action Sections (Similar to original h3) */
+    .action-section {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #e0e6eb;
+    }
+    .action-section-title {
+        color: var(--primary-blue);
+        font-weight: 700;
+        margin-bottom: 15px;
+        font-size: 1.3rem;
+    }
+
+    /* Form Elements and Buttons */
     .row { 
         margin:15px 0; 
         display:flex; 
@@ -59,46 +127,43 @@
         align-items:center; 
         flex-wrap: wrap;
     }
-    
-    /* 3. Button Styles (Unified Look) */
     button { 
         padding:12px 18px; 
         border:0; 
         border-radius:8px; 
         cursor:pointer; 
-        font-weight: 600; 
+        font-weight: 700; /* Bolder text for CTA */
         transition: all 0.2s ease;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        flex-grow: 1;
     }
     button:hover {
         transform: translateY(-1px);
-        box-shadow: 0 6px 10px rgba(0,0,0,0.15);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.2);
     }
     
-    /* Color mapping to new palette */
-    #connectButton { background:var(--primary-blue); color:#fff; }
+    /* Button Colors (Focusing on a few strong CTAs) */
+    #connectButton { background:var(--primary-blue); color:#fff; font-size: 1.1em; padding: 15px; }
     #connectButton:hover { background: #1558b3; }
     
-    #disconnectButton { background:#95a5a6; color:#fff; }
-    #disconnectButton:hover { background: #7f8c8d; }
+    #disconnectButton { background:#e9ecef; color:var(--text-color); box-shadow: none; }
+    #disconnectButton:hover { background: #ced4da; }
     
-    #registerButton { background:var(--success); color:#fff; }
-    #registerButton:hover { background: #1e7e34; }
+    #authButton { background:var(--success); color:#fff; }
+    #authButton:hover { background: #1e7e34; }
     
-    #authButton { background:var(--warning); color:var(--text-color); }
-    #authButton:hover { background: #e09b00; }
+    #registerButton { background:#40739e; color:#fff; }
+    #registerButton:hover { background: #355d7f; }
     
-    #deactivateButton { background:var(--danger); color:#fff; }
-    #deactivateButton:hover { background: #b02a37; }
+    #deactivateButton { background:#fa8231; color:#fff; } /* Orange for cautionary action */
+    #deactivateButton:hover { background: #e0702a; }
 
-    #rotateButton, .row button:not(#registerButton):not(#authButton):not(#deactivateButton) { 
+    #rotateButton, .row button:not(#registerButton):not(#authButton):not(#deactivateButton):not(#connectButton) { 
         background: var(--secondary-dark); 
         color: #fff; 
-        flex-grow: 1;
     }
-    #rotateButton:hover, .row button:hover { background: #2c3a57; }
-    
-    /* 4. Status Messages */
+
+    /* Status Messages */
     .status { 
         padding:12px 15px; 
         border-radius:8px; 
@@ -110,14 +175,15 @@
     .ok { background:#e8f5e9; color:var(--success); border-color:var(--success); }
     .err { background:#ffebee; color:var(--danger); border-color:var(--danger); }
     
-    /* 5. Input Field Styling */
+    /* Input Field Styling */
     input[type="text"] { 
         width:100%;
-        padding:10px 12px;
+        padding:12px 15px;
         border-radius:8px;
         border:1px solid #ced4da;
         box-sizing: border-box;
         transition: border-color 0.2s;
+        font-size: 1em;
     }
     input[type="text"]:focus {
         border-color: var(--primary-blue);
@@ -129,54 +195,79 @@
         color: var(--secondary-dark);
         display: block;
         margin-bottom: 5px;
+        font-size: 0.9em;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Privacy-Preserving Auth — Portal</h1>
+  
+  <div class="container">
+    <div class="sidebar">
+        <h2>🎓 University Portal</h2>
+        <p>A secure decentralized identity and access management system powered by the Ethereum blockchain.</p>
 
-    <div id="status" class="status err">Status: Wallet Disconnected.</div>
-    <div class="row">
-      <div style="flex:1;">Current Account: <strong id="currentAccount">N/A</strong></div>
-      <div>Network: <strong id="networkName">N/A</strong></div>
+        <div class="status-panel">
+            <div id="status" class="status err" style="width: 100%;">Status: Wallet Disconnected.</div>
+            
+            <div style="margin-top: 15px;">
+                <strong style="color: white;">Current Account:</strong> 
+                <span id="currentAccount" style="font-size: 0.9em;">N/A</span>
+            </div>
+            <div>
+                <strong style="color: white;">Network:</strong> 
+                <span id="networkName" style="font-size: 0.9em;">N/A</span>
+            </div>
+        </div>
+        
+        <div style="margin-top: auto; font-size: 0.8em; color: #95a5a6;">
+            DID Management Layer: AuthManager.sol
+        </div>
     </div>
+    
+    <div class="content">
+        <h1>Welcome Back</h1>
+        <p class="welcome-text">Connect your MetaMask wallet to register or authenticate using our secure challenge-response protocol.</p>
 
-    <div class="row">
-      <button id="connectButton" onclick="connectWallet()">Connect MetaMask</button>
-      <button id="disconnectButton" onclick="disconnect()" style="display:none;">Disconnect</button>
-    </div>
+        <div class="action-section" style="border-top: none;">
+             <div class="row">
+                <button id="connectButton" onclick="connectWallet()">Connect MetaMask / Request Accounts</button>
+                <button id="disconnectButton" onclick="disconnect()" style="display:none;">Disconnect Wallet</button>
+             </div>
+        </div>
 
-    <h3>Registration & Authentication</h3>
-    <div class="row">
-      <button id="registerButton" onclick="registerUser()">Register</button>
-      <button id="authButton" onclick="authenticateUser()">Authenticate (Login)</button>
-      <button id="deactivateButton" onclick="deactivateAccount()">Deactivate My Account</button>
-    </div>
-    <div id="registerMessage" class="status" style="display:none;"></div>
-    <div id="authMessage" class="status" style="display:none;"></div>
+        <div class="action-section">
+            <div class="action-section-title">🔒 User Actions</div>
+            <div id="authMessage" class="status" style="display:none;"></div>
+            <div id="registerMessage" class="status" style="display:none;"></div>
+            
+            <div class="row">
+                <button id="authButton" onclick="authenticateUser()" style="flex: 2;">Authenticate (Login)</button>
+                <button id="registerButton" onclick="registerUser()">Register</button>
+                <button id="deactivateButton" onclick="deactivateAccount()">Deactivate</button>
+            </div>
+        </div>
 
-    <h3>DID Key Rotation</h3>
-    <div>
-      <label>New Wallet Address (Future DID Key):</label>
-      <input id="newWalletAddress" type="text" placeholder="0x..." style="margin-bottom: 10px;">
-      <div class="row">
-        <button id="rotateButton" onclick="updateDID()">Rotate DID Key</button>
-      </div>
-      <p style="font-size: 0.85em; color: #555; margin-top: 5px;">
-        Warning: This transfers your registration and all data to the new address.
-        You must confirm this transaction using your *current* wallet.
-      </p>
-      <div id="rotateMessage" class="status" style="display:none; margin-top: 10px;"></div>
-    </div>
+        <div class="action-section">
+            <div class="action-section-title">🔄 DID Key Rotation</div>
+            <label>New Wallet Address (Future DID Key):</label>
+            <input id="newWalletAddress" type="text" placeholder="0x..." style="margin-bottom: 10px;">
+            <div class="row">
+                <button id="rotateButton" onclick="updateDID()">Rotate DID Key</button>
+            </div>
+            <p style="font-size: 0.8em; color: var(--text-light); margin-top: 5px;">
+                Warning: This transfers your registration and all data to the new address. Confirm using your *current* wallet.
+            </p>
+            <div id="rotateMessage" class="status" style="display:none; margin-top: 10px;"></div>
+        </div>
 
 
-    <h3>Profile</h3>
-    <div>
-      <label>Profile CID (IPFS) or public pointer</label>
-      <input id="profileCid" type="text" placeholder="Qm..." style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;">
-      <div class="row"><button onclick="setProfileCid()">Save Profile CID</button></div>
-      <div id="profileMessage" class="status" style="display:none;"></div>
+        <div class="action-section">
+            <div class="action-section-title">📝 Profile Pointer (IPFS)</div>
+            <label>Profile CID (IPFS) or public pointer</label>
+            <input id="profileCid" type="text" placeholder="Qm..." style="width:100%;">
+            <div class="row"><button onclick="setProfileCid()">Save Profile CID</button></div>
+            <div id="profileMessage" class="status" style="display:none;"></div>
+        </div>
     </div>
   </div>
 
@@ -249,15 +340,10 @@
         );
         
         if (isAuthenticated) {
-            // Since the contract no longer logs access, we should call a separate logging function 
-            // if we want to track logins (this would be the transaction popup now).
-            // For a truly single pop-up experience, we skip logging and trust the signature verification.
             
             showMsg('authMessage','✅ Authentication successful! Access granted.', true);
             setTimeout(()=>window.location.href='dashboard.html', 1500); 
         } else {
-            // This path should not be hit if the contract reverted with an error, 
-            // but is a fallback for safety.
             showMsg('authMessage','Authentication Failed: Signature verified but nonce was invalid.', false);
         }
 
@@ -267,7 +353,6 @@
           if (errorMsg.includes('User denied transaction signature')) {
              showMsg('authMessage', 'Login attempt cancelled by user.', false);
           } else {
-             // The contract error message is usually embedded here: "execution reverted: Authentication Failed: Invalid signature or message"
              showMsg('authMessage', `Authentication Failed: ${errorMsg}`, false);
           }
       }
