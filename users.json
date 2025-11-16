@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Ethan Carter",
+    "age": 21,
+    "address": "128 King St, Sydney, Australia",
+    "course": "Computer Science",
+    "status": "Active"
+  },
+  {
+    "name": "Sophia Martinez",
+    "age": 22,
+    "address": "4552 Sunset Blvd, Los Angeles, USA",
+    "course": "Information Systems",
+    "status": "Active"
+  },
+  {
+    "name": "Liam O'Connor",
+    "age": 23,
+    "address": "19 Dublin Rd, Dublin, Ireland",
+    "course": "Mechanical Engineering",
+    "status": "Completed"
+  },
+  {
+    "name": "Aisha Rahman",
+    "age": 20,
+    "address": "33 Bukit Timah Rd, Singapore",
+    "course": "Data Analytics",
+    "status": "Active"
+  },
+  {
+    "name": "Noah Johansson",
+    "age": 24,
+    "address": "72 Västra Storgatan, Malmö, Sweden",
+    "course": "Artificial Intelligence",
+    "status": "On Leave"
+  },
+  {
+    "name": "Chloe Dupont",
+    "age": 19,
+    "address": "11 Rue Lafayette, Paris, France",
+    "course": "Cybersecurity",
+    "status": "Active"
+  },
+  {
+    "name": "Hiroshi Tanaka",
+    "age": 22,
+    "address": "5-10 Shinjuku, Tokyo, Japan",
+    "course": "Electrical Engineering",
+    "status": "Suspended"
+  },
+  {
+    "name": "Maria Carvalho",
+    "age": 21,
+    "address": "211 Av. Paulista, São Paulo, Brazil",
+    "course": "Business Administration",
+    "status": "Active"
+  },
+  {
+    "name": "David Kim",
+    "age": 20,
+    "address": "44 Gangnam-daero, Seoul, South Korea",
+    "course": "Software Engineering",
+    "status": "Withdrawn"
+  },
+  {
+    "name": "Amara Ndlovu",
+    "age": 23,
+    "address": "12 Rivonia Rd, Johannesburg, South Africa",
+    "course": "Cloud Computing",
+    "status": "Active"
+  }
+]
