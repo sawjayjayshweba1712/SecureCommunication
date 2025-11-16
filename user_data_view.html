@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Data View - Admin/Teacher Only</title>
+  <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <style>
+    body { font-family: 'Poppins', sans-serif; padding: 20px; background: #f4f6fb; color: #2f3640; }
+    .container { max-width: 1200px; margin: auto; background: #fff; padding: 30px; border-radius: 15px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06); }
+    h1 { color: #273c75; border-bottom: 2px solid #dfe4ea; padding-bottom: 10px; margin-top: 0; }
+    #status { padding: 15px; border-radius: 8px; margin-bottom: 20px; font-weight: 600; }
+    .err { background: #ffebee; color: #b71c1c; border: 1px solid #ffcdd2; }
+    .ok { background: #e8f5e9; color: #1b5e20; border: 1px solid #c8e6c9; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #dfe4ea; padding: 12px; text-align: left; font-size: 14px; }
+    th { background-color: #273c75; color: white; font-weight: 500; }
+    tr:nth-child(even) { background-color: #f8f9fa; }
+    .btn { padding: 10px 14px; border: 0; border-radius: 6px; cursor: pointer; font-weight: 600; background: #1e88e5; color: #fff; margin-bottom: 20px;}
+    .btn:hover { background: #1565c0; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <button class="btn" onclick="window.location.href='secure.html'">← Back to Public Wall</button>
+    <h1>📋 Student/User Data View</h1>
+    
+    <div id="status" class="err">Connecting wallet...</div>
+    
+    <div id="content-area" style="display:none;">
+        <p>Access Granted for Role: <strong id="userRole"></strong></p>
+        <table id="userDataTable">
+            <thead>
+                <tr>
+                    <th>Address</th>
+                    <th>Name</th>
+                    <th>Role (On-Chain)</th>
+                    <th>Course Enrolled (Mock)</th>
+                    <th>Last Access (Mock)</th>
+                    <th>Profile CID</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+    </div>
+
+  </div>
+
+  <script>
+    // ⚠️ AuthManager Contract Address (Must be the one used in index.html/dashboard.html)
+    const CONTRACT_ADDRESS = "0xd1968a1b2250233500D4dd3967012928e87Ef66c"; 
+    
+    // ABI only needs the role getter
+    const CONTRACT_ABI = [
+      "function getMyRole() external view returns (string memory)"
+    ];
+
+    let provider, signer, contract, currentAccount;
+    
+    function shortAddr(a) { return a ? `${a.slice(0, 6)}...${a.slice(-4)}` : "N/A"; }
+    function el(id){ return document.getElementById(id); }
+    function setStatus(t, ok=true){ el('status').textContent=t; el('status').className=ok?'ok':'err'; }
+
+    async function init() {
+        if (typeof window.ethereum === "undefined") {
+            setStatus("MetaMask not installed. Please install and refresh.", false);
+            return;
+        }
+
+        try {
+            provider = new ethers.providers.Web3Provider(window.ethereum);
+            await provider.send("eth_requestAccounts", []);
+            signer = provider.getSigner();
+            currentAccount = await signer.getAddress();
+            
+            const providerContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+            
+            // 1. Get the current user's on-chain role
+            const userRole = await providerContract.getMyRole({ from: currentAccount });
+            
+            // 2. Check for privileged access
+            if (userRole === 'admin' || userRole === 'teacher') {
+                el('userRole').textContent = userRole.toUpperCase();
+                setStatus(`Access Granted. Role: ${userRole.toUpperCase()}. Fetching data...`, true);
+                el('content-area').style.display = 'block';
+                await fetchAndDisplayData();
+            } else {
+                setStatus(`Access Denied. Your role is '${userRole || 'member'}'. Only Admin/Teacher can view this page.`, false);
+            }
+
+        } catch (error) {
+            console.error("Initialization Error:", error);
+            setStatus(`Error: Could not connect or verify role. ${error.message}`, false);
+        }
+    }
+
+    async function fetchAndDisplayData() {
+        const dataTableBody = el('userDataTable').querySelector('tbody');
+        dataTableBody.innerHTML = '<tr><td colspan="6">Loading mock database from GitHub...</td></tr>';
+        
+        try {
+            // IMPORTANT: In a real deployment, this path should be the RAW URL 
+            // of your users.json file on your GitHub Pages deployment.
+            // When running locally, simply use 'users.json'.
+            const response = await fetch('users.json'); 
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const users = await response.json();
+            dataTableBody.innerHTML = ''; // Clear loading message
+
+            users.forEach(user => {
+                const row = dataTableBody.insertRow();
+                row.insertCell().textContent = shortAddr(user.address);
+                row.insertCell().textContent = user.name;
+                row.insertCell().textContent = user.role;
+                row.insertCell().textContent = user.course_enrolled;
+                row.insertCell().textContent = user.last_access;
+                row.insertCell().textContent = shortAddr(user.profileCID); 
+            });
+
+        } catch (error) {
+            console.error("Data Fetch Error:", error);
+            dataTableBody.innerHTML = `<tr><td colspan="6" class="err">Failed to load user data: ${error.message}</td></tr>`;
+        }
+    }
+
+    window.onload = init;
+    
+    // Auto-reload on wallet changes for security
+    if (typeof window.ethereum !== 'undefined') {
+        window.ethereum.on('accountsChanged', () => window.location.reload());
+        window.ethereum.on('chainChanged', () => window.location.reload());
+    }
+  </script>
+</body>
+</html>
