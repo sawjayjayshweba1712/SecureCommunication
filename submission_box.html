@@ -179,11 +179,23 @@
 
     /* Modal Styling */
     .modal {
-        /* ... existing styles ... */
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: none; 
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
     }
     .modal-content {
-        /* ... existing styles ... */
+        background: var(--card-bg);
+        padding: 30px;
         border-radius: 18px;
+        width: 90%;
+        max-width: 500px;
         box-shadow: var(--shadow-dark);
     }
     .modal-content input[type="text"], 
@@ -242,7 +254,7 @@
 
   <div id="createBoxModal" class="modal">
     <div class="modal-content">
-        <h2>Create New Submission Box</h2>
+        <h3 style="color: var(--primary-color); font-size: 1.5rem; margin-top: 0;">Define New Assignment Box</h3>
         <input type="text" id="boxTitle" placeholder="Submission Title (e.g., Assignment 1: Report)" required>
         <textarea id="boxDescription" placeholder="Detailed instructions..." rows="4"></textarea>
         <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
@@ -254,7 +266,7 @@
   
   <div id="submissionModal" class="modal">
     <div class="modal-content">
-        <h2 id="submissionModalTitle">Submit File</h2>
+        <h3 style="color: var(--primary-color); font-size: 1.5rem; margin-top: 0;">File Upload</h3>
         <p>Submission for: <strong id="submissionAssignmentTitle"></strong></p>
         
         <label for="fileInput" style="display: block; margin-bottom: 5px;">Select File:</label>
