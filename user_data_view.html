@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Records (Admin/Teacher)</title>
+  
+  <!-- Ethers for Role Check -->
+  <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  
+  <!-- Firebase SDK Imports -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, onSnapshot, collection, query, addDoc, serverTimestamp, setLogLevel as setFirestoreLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    
+    window.firebase = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, onSnapshot, collection, query, addDoc, serverTimestamp, setLogLevel, setFirestoreLogLevel };
+  </script>
+  
+  <style>
+    :root {
+      --primary-color: #273c75;
+      --secondary-color: #40739e;
+      --bg-color: #f4f6fb;
+      --card-bg: #ffffff;
+      --text-color: #2f3640;
+      --success-color: #43a047;
+      --danger-color: #c23616;
+      --warning-color: #ffb300;
+      --shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+    }
+    body {
+      margin: 0;
+      font-family: "Poppins", sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: var(--shadow);
+    }
+    h1 {
+      color: var(--primary-color);
+      border-bottom: 2px solid #e0e6eb;
+      padding-bottom: 10px;
+      margin-top: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .status-message {
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-weight: 600;
+      text-align: center;
+    }
+    .status-denied { background-color: #ffebee; color: var(--danger-color); border: 1px solid #ffcdd2; }
+    .status-loading { background-color: #e3f2fd; color: var(--secondary-color); }
+    .status-success { background-color: #e8f5e9; color: var(--success-color); }
+    
+    .data-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin-top: 20px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+    .data-table th, .data-table td {
+      padding: 12px 15px;
+      text-align: left;
+      font-size: 14px;
+      border-bottom: 1px solid #dfe4ea;
+    }
+    .data-table th {
+      background-color: var(--primary-color);
+      color: white;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .data-table tr:nth-child(even) { background-color: #f8f9fa; }
+    .data-table tr:hover { background-color: #eef2f7; }
+
+    /* Buttons */
+    .btn {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+    .btn-back {
+      background-color: var(--secondary-color);
+      color: white;
+      margin-right: 15px;
+      margin-bottom: 20px;
+    }
+    .btn-back:hover { background-color: #5d8aa8; }
+    .btn-add {
+      background-color: var(--success-color);
+      color: white;
+      margin-left: auto;
+    }
+    .btn-add:hover { background-color: #388e3c; }
+
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: var(--card-bg);
+      padding: 30px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: var(--shadow);
+    }
+    .modal-content h3 { color: var(--primary-color); margin-top: 0; }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #dfe4ea;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .modal-actions button[type="submit"] { background-color: var(--primary-color); color: white; }
+    .modal-actions button[type="submit"]:hover { background-color: var(--secondary-color); }
+    .modal-actions button[type="button"] { background-color: #ccc; color: var(--text-color); }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <button class="btn btn-back" onclick="window.location.href='secure.html'">← Back to Public Wall</button>
+    
+    <h1>
+      <span>🧑‍🎓 Student Records Database</span>
+      <button class="btn btn-add" id="addRecordBtn" style="display: none;" onclick="showAddModal()">+ Add New Record</button>
+    </h1>
+
+    <div id="accessStatus" class="status-message status-loading">
+        Initializing and checking user role...
+    </div>
+
+    <div id="dataContent" style="display: none;">
+        <p>Your Role: <strong id="userRole">...</strong> | Wallet: <strong id="walletAddress">...</strong></p>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Age</th>
+                    <th>Address</th>
+                    <th>Enrolled Course</th>
+                    <th>Status</th>
+                    <th>Record ID</th>
+                </tr>
+            </thead>
+            <tbody id="studentTableBody">
+                <tr><td colspan="6" style="text-align: center;">Loading student records from database...</td></tr>
+            </tbody>
+        </table>
+    </div>
+  </div>
+
+  <!-- Modal for Adding New Student Record -->
+  <div id="addRecordModal" class="modal-overlay" onclick="closeAddModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h3>Add New Student Record</h3>
+        <form id="addRecordForm">
+            <div class="form-group">
+                <label for="studentName">Full Name</label>
+                <input type="text" id="studentName" required placeholder="Jane Doe">
+            </div>
+            <div class="form-group">
+                <label for="studentAge">Age</label>
+                <input type="number" id="studentAge" required min="16" max="99" placeholder="20">
+            </div>
+            <div class="form-group">
+                <label for="studentAddress">Physical Address</label>
+                <input type="text" id="studentAddress" required placeholder="123 Blockchain St, City">
+            </div>
+            <div class="form-group">
+                <label for="studentCourse">Enrolled Course</label>
+                <select id="studentCourse" required>
+                    <option value="Blockchain Development">Blockchain Development</option>
+                    <option value="Smart Contract Law">Smart Contract Law</option>
+                    <option value="DAO Governance">DAO Governance</option>
+                    <option value="Cyber Security">Cyber Security</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="studentStatus">Status</label>
+                <select id="studentStatus" required>
+                    <option value="Enrolled">Enrolled</option>
+                    <option value="Leave of Absence">Leave of Absence</option>
+                    <option value="Graduated">Graduated</option>
+                    <option value="Suspended">Suspended</option>
+                </select>
+            </div>
+            <div id="formStatus" class="status-message" style="display: none; font-size: 14px;"></div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeAddModal()">Cancel</button>
+                <button type="submit">Save Record</button>
+            </div>
+        </form>
+    </div>
+  </div>
+
+
+  <script>
+    // --- GLOBAL CANVAS VARIABLES & CONFIG ---
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+    
+    // --- BLOCKCHAIN CONFIG (from AuthManager.sol) ---
+    const CONTRACT_ADDRESS = "0xd1968a1b2250233500D4dd3967012928e87Ef66c"; 
+    const AUTH_ABI = [ "function getRole(address user) view returns (string memory)" ];
+    const ALLOWED_ROLES = ["admin", "teacher"];
+
+    // --- FIREBASE INSTANCES & STATE ---
+    let app, db, auth;
+    let currentAccount, userRole;
+
+    // --- UTILITY FUNCTIONS ---
+    function setStatus(message, isSuccess = true, isLoading = false) {
+        const statusEl = document.getElementById('accessStatus');
+        statusEl.textContent = message;
+        statusEl.className = 'status-message ' + (
+            isLoading ? 'status-loading' : 
+            isSuccess ? 'status-success' : 
+            'status-denied'
+        );
+    }
+
+    function shortAddr(a) {
+        return a ? `${a.slice(0, 6)}...${a.slice(-4)}` : "N/A";
+    }
+
+    // --- CORE LOGIC ---
+
+    // 1. Initialize Firebase
+    async function initFirebase() {
+        if (!firebaseConfig || !window.firebase) {
+            setStatus("Firebase configuration missing or imports failed.", false);
+            return;
+        }
+
+        const { initializeApp, getAuth, signInWithCustomToken, signInAnonymously, getFirestore, setLogLevel, setFirestoreLogLevel } = window.firebase;
+
+        // Set log levels for debugging
+        setLogLevel('debug'); 
+        setFirestoreLogLevel('debug');
+
+        app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+        
+        try {
+            if (initialAuthToken) {
+                await signInWithCustomToken(auth, initialAuthToken);
+            } else {
+                await signInAnonymously(auth);
+            }
+            await initWalletAndCheckRole();
+
+        } catch (e) {
+            console.error("Firebase Auth failed:", e);
+            setStatus(`Authentication failed. Refresh required: ${e.message}`, false);
+        }
+    }
+
+    // 2. Connect Wallet and Check Role
+    async function initWalletAndCheckRole() {
+        if (typeof window.ethereum === "undefined") {
+            setStatus("MetaMask not found. Cannot verify role.", false);
+            return;
+        }
+
+        try {
+            setStatus("Connecting wallet and checking role...", true, true);
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            await provider.send("eth_requestAccounts", []);
+            
+            currentAccount = await provider.getSigner().getAddress();
+            document.getElementById('walletAddress').textContent = shortAddr(currentAccount);
+
+            const contract = new ethers.Contract(CONTRACT_ADDRESS, AUTH_ABI, provider);
+            
+            // Call the blockchain to get the current user's role
+            userRole = await contract.getRole(currentAccount);
+            document.getElementById('userRole').textContent = userRole || 'member (default)';
+
+            if (ALLOWED_ROLES.includes(userRole.toLowerCase())) {
+                // Access Granted
+                setStatus(`Access Granted! Role: ${userRole.toUpperCase()}`, true);
+                document.getElementById('dataContent').style.display = 'block';
+                document.getElementById('addRecordBtn').style.display = 'inline-block';
+                // 3. Start listening to Firestore data
+                listenForStudentRecords();
+            } else {
+                // Access Denied
+                setStatus(`Access Denied. Your role (${userRole || 'member'}) does not permit viewing this data.`, false);
+                document.getElementById('dataContent').style.display = 'none';
+                document.getElementById('addRecordBtn').style.display = 'none';
+            }
+
+        } catch (error) {
+            console.error("Role check error:", error);
+            setStatus(`Connection/Contract Error: ${error.message || 'Check console.'}`, false);
+        }
+    }
+
+    // 3. Firestore Listener (Online Data)
+    function listenForStudentRecords() {
+        const { collection, query, onSnapshot } = window.firebase;
+        
+        // Use a public path for student records accessible by any authenticated user with the correct role
+        const recordsPath = `artifacts/${appId}/public/data/student_records`;
+        const recordsCollection = collection(db, recordsPath);
+        const recordsQuery = query(recordsCollection);
+
+        onSnapshot(recordsQuery, (snapshot) => {
+            const records = [];
+            snapshot.forEach((doc) => {
+                records.push({ id: doc.id, ...doc.data() });
+            });
+            renderTable(records);
+        }, (error) => {
+            console.error("Firestore listen failed:", error);
+            setStatus("Failed to load student records. Check permissions/console.", false);
+            document.getElementById('studentTableBody').innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--danger-color);">Error loading data: ${error.message}</td></tr>`;
+        });
+    }
+
+    // 4. Render Data to UI
+    function renderTable(records) {
+        const tbody = document.getElementById('studentTableBody');
+        tbody.innerHTML = ''; // Clear previous data
+
+        if (records.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--secondary-color);">No student records found. Add one!</td></tr>`;
+            return;
+        }
+
+        records.forEach(record => {
+            const row = tbody.insertRow();
+            row.insertCell().textContent = record.name || 'N/A';
+            row.insertCell().textContent = record.age || 'N/A';
+            row.insertCell().textContent = record.address || 'N/A';
+            row.insertCell().textContent = record.course || 'N/A';
+            row.insertCell().textContent = record.status || 'N/A';
+            row.insertCell().textContent = shortAddr(record.id); // Show a short ID for reference
+        });
+    }
+
+    // --- MODAL & FORM LOGIC ---
+
+    function showAddModal() {
+        document.getElementById('addRecordModal').style.display = 'flex';
+        document.getElementById('formStatus').style.display = 'none';
+    }
+    
+    function closeAddModal(event) {
+        if (!event || event.target.id === 'addRecordModal') {
+            document.getElementById('addRecordModal').style.display = 'none';
+            document.getElementById('addRecordForm').reset();
+        }
+    }
+
+    document.getElementById('addRecordForm').addEventListener('submit', handleAddRecord);
+
+    async function handleAddRecord(e) {
+        e.preventDefault();
+        const { collection, addDoc, serverTimestamp } = window.firebase;
+        
+        const formStatus = document.getElementById('formStatus');
+        formStatus.style.display = 'block';
+        formStatus.textContent = 'Saving record...';
+        formStatus.className = 'status-message status-loading';
+
+        try {
+            const newRecord = {
+                name: document.getElementById('studentName').value,
+                age: parseInt(document.getElementById('studentAge').value),
+                address: document.getElementById('studentAddress').value,
+                course: document.getElementById('studentCourse').value,
+                status: document.getElementById('studentStatus').value,
+                createdBy: currentAccount,
+                createdAt: serverTimestamp()
+            };
+
+            const recordsPath = `artifacts/${appId}/public/data/student_records`;
+            await addDoc(collection(db, recordsPath), newRecord);
+
+            formStatus.textContent = 'Record saved successfully!';
+            formStatus.className = 'status-message status-success';
+            setTimeout(() => closeAddModal(), 1500);
+
+        } catch (error) {
+            console.error("Error saving record:", error);
+            formStatus.textContent = `Failed to save: ${error.message}`;
+            formStatus.className = 'status-message status-denied';
+        }
+    }
+
+    // --- STARTUP ---
+    window.addEventListener("DOMContentLoaded", initFirebase);
+    
+    // Add event listeners for MetaMask account/network changes
+    if (typeof window.ethereum !== 'undefined') {
+        window.ethereum.on('accountsChanged', () => window.location.reload());
+        window.ethereum.on('chainChanged', () => window.location.reload());
+    }
+  </script>
+</body>
+</html>
