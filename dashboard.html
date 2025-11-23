@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head> 
+<head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Dashboard</title>
@@ -14,6 +14,22 @@
     .field { background:#f8fafc;padding:12px 15px; border-radius:8px; margin-bottom: 12px; border-left: 4px solid #40739e; }
     .field b { color: #273c75; }
     #addr { font-family: monospace; }
+
+    /* NEW STYLES FOR PERFORMANCE METRICS */
+    .metric-section { margin-top: 30px; padding-top: 15px; border-top: 1px dashed #ddd; }
+    .metric-section h2 { color: #1e88e5; font-size: 1.4em; margin-bottom: 15px; }
+    .metric-value { 
+        padding:12px 15px; 
+        border-radius:8px; 
+        margin-bottom: 12px; 
+        border-left: 4px solid;
+        font-weight: bold;
+        display: none; /* Hidden by default */
+        color: #273c75;
+    }
+    .metric-auth { border-left-color: #1a73e8; background: #e3f2fd; } /* Blue for Auth Time */
+    .metric-tx { border-left-color: #40739e; background: #e0f2f1; } /* Dark Blue for Tx Time */
+    .metric-gas { border-left-color: #43a047; background: #e8f5e9; } /* Green for Gas Cost */
   </style>
 </head>
 <body>
@@ -25,6 +41,13 @@
     <div class="field"><b>Registration Status:</b> <span id="registered">Loading...</span></div>
     <div class="field"><b>Assigned Role:</b> <span id="role">Loading...</span></div>
     <div class="field"><b>Profile Pointer/CID:</b> <span id="profileCid">Loading...</span></div>
+    
+    <div id="performanceMetrics" class="metric-section" style="display: none;">
+        <h2>⏱️ Performance Metrics (Last Action: <span id="txEvent">...</span>)</h2>
+        <div id="authTimeMetric" class="metric-value metric-auth">Authentication Time: </div>
+        <div id="txTimeMetric" class="metric-value metric-tx">Transaction Response Time: </div>
+        <div id="gasCostMetric" class="metric-value metric-gas">Gas Cost: </div>
+    </div>
     <div style="margin-top:25px;">
       <button onclick="goBack()">← Back to Login</button>
       <button onclick="goNext()" style="background-color: #43a047;">Go to Public Wall →</button>
@@ -70,10 +93,12 @@
         
         const cid=await c.getProfileCID(addr);
         document.getElementById('profileCid').textContent=cid || 'N/A';
+
+        // --- NEW: Load and Display Performance Metrics ---
+        loadPerformanceMetrics();
         
       } catch(e) {
           console.error("Error loading dashboard data:", e);
-          // Display error to user
           document.getElementById('addr').textContent = "Error loading data";
           document.getElementById('balance').textContent = "Error";
           document.getElementById('registered').textContent = "Error";
@@ -83,6 +108,48 @@
       }
     }
     
+    function loadPerformanceMetrics() {
+        const authTime = sessionStorage.getItem('authTime');
+        const txTime = sessionStorage.getItem('txTime');
+        const gasCost = sessionStorage.getItem('gasCost');
+        const txEvent = sessionStorage.getItem('txEvent');
+
+        if (txEvent) {
+            document.getElementById('txEvent').textContent = txEvent;
+            document.getElementById('performanceMetrics').style.display = 'block';
+
+            if (authTime) {
+                const authEl = document.getElementById('authTimeMetric');
+                authEl.innerHTML = `Authentication Time: <b>${authTime} ms</b> (Signature to Verification)`;
+                authEl.style.display = 'block';
+                sessionStorage.removeItem('authTime');
+            } else {
+                 document.getElementById('authTimeMetric').style.display = 'none';
+            }
+
+
+            if (txTime && gasCost) {
+                const txEl = document.getElementById('txTimeMetric');
+                const gasEl = document.getElementById('gasCostMetric');
+                
+                txEl.innerHTML = `Transaction Response Time: <b>${txTime} ms</b> (Tx Sent to Mined)`;
+                gasEl.innerHTML = `Gas Cost: ${gasCost}`;
+                
+                txEl.style.display = 'block';
+                gasEl.style.display = 'block';
+
+                sessionStorage.removeItem('txTime');
+                sessionStorage.removeItem('gasCost');
+            } else {
+                 document.getElementById('txTimeMetric').style.display = 'none';
+                 document.getElementById('gasCostMetric').style.display = 'none';
+            }
+            
+            // Clear the event type after displaying
+            sessionStorage.removeItem('txEvent');
+        }
+    }
+
     function goBack(){window.location.href="index.html";}
     function goNext(){window.location.href="secure.html";}
     
