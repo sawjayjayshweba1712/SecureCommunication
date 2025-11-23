@@ -317,7 +317,14 @@
             <div class="row"><button onclick="setProfileCid()">Save Profile CID</button></div>
             <div id="profileMessage" class="status" style="display:none;"></div>
         </div>
-    </div>
+        
+        <div class="action-section">
+            <div class="action-section-title">⏱️ Performance Metrics</div>
+            <div id="authTime" class="status" style="display:none; color: var(--text-color); border-left-color: var(--primary-blue);"></div>
+            <div id="txTime" class="status" style="display:none; color: var(--text-color); border-left-color: #40739e;"></div>
+            <div id="gasCost" class="status" style="display:none; color: var(--text-color); border-left-color: var(--success);"></div>
+        </div>
+        </div>
   </div>
 
   <script>
@@ -341,10 +348,55 @@
     ];
 
     let provider, signer, contract, currentAccount;
-
+    let txStartTime; // Global timer for Transaction Response Time
+    
     function el(id){ return document.getElementById(id); }
     function showStatus(t, ok=true){ el('status').textContent='Status: '+t; el('status').className='status '+(ok?'ok':'err'); }
-    function showMsg(id,t,ok=true){ const m=el(id); m.style.display='block'; m.textContent=t; m.className='status '+(ok?'ok':'err'); setTimeout(()=>m.style.display='none',5000); }
+    
+    // --- MODIFIED showMsg: Keeps performance metrics visible ---
+    function showMsg(id,t,ok=true){ 
+        const m=el(id); 
+        m.style.display='block'; 
+        m.innerHTML = t; // Use innerHTML to support **markdown bolding**
+        
+        // Only apply 'ok'/'err' classes for functional messages (not metrics)
+        if (id !== 'authTime' && id !== 'txTime' && id !== 'gasCost') {
+            m.className='status '+(ok?'ok':'err');
+            setTimeout(()=>m.style.display='none',5000); 
+        } else {
+            m.className='status'; // Keep base 'status' class for styling
+        }
+    }
+    // --------------------------------------------------------
+
+    // --- NEW UTILITY: Logs transaction metrics ---
+    function logTxMetrics(receipt) {
+        const txTimeEl = el('txTime');
+        const gasCostEl = el('gasCost');
+        
+        // 1. Transaction Time (End Timer)
+        const txEndTime = performance.now();
+        // Check if the timer was started globally (should be)
+        if (window.txStartTime) {
+            const duration = (txEndTime - window.txStartTime).toFixed(2);
+            showMsg('txTime', `✅ Transaction Time: **${duration} ms** (Tx Sent to Mined Block)`, true);
+        } else {
+            showMsg('txTime', `⏱️ Transaction Time: N/A (Timer error)`, false);
+        }
+
+        // 2. Gas Cost
+        const gasUsed = receipt.gasUsed.toString();
+        const gasPrice = receipt.effectiveGasPrice.toString();
+        // Calculate the transaction cost in ETH and limit precision
+        const txCost = ethers.utils.formatEther(receipt.effectiveGasPrice.mul(receipt.gasUsed)).substring(0, 8); 
+        
+        showMsg('gasCost', `⛽ Gas Cost: **${txCost} ETH** (${gasUsed} gas used @ ${ethers.utils.formatUnits(gasPrice, 'gwei')} Gwei)`, true);
+        
+        // Clear global timer
+        window.txStartTime = null;
+    }
+    // ---------------------------------------------
+
 
     async function connectWallet(){
       if(!window.ethereum){showMsg('authMessage','MetaMask not installed',false);return;}
@@ -353,15 +405,45 @@
       contract=new ethers.Contract(CONTRACT_ADDRESS,CONTRACT_ABI,signer);
       const n=await provider.getNetwork();el('currentAccount').textContent=currentAccount;el('networkName').textContent=n.name;showStatus('Connected',true);
       el('connectButton').style.display='none';el('disconnectButton').style.display='inline-block';
+      // Clear metrics on connection
+      showMsg('authTime', '', true); showMsg('txTime', '', true); showMsg('gasCost', '', true);
     }
     
     function disconnect(){provider=null;signer=null;contract=null;currentAccount=null;el('currentAccount').textContent='N/A';el('networkName').textContent='N/A';showStatus('Disconnected',false);el('connectButton').style.display='inline-block';el('disconnectButton').style.display='none';}
     
-    async function registerUser(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try{const tx=await contract.register();showMsg('registerMessage','Confirm registration in MetaMask...');await tx.wait();showMsg('registerMessage','Registered successfully!');}catch(e){showMsg('registerMessage', e.error?.message || e.message || 'Registration failed.',false);}}
+    // --- MODIFIED registerUser (Transaction Metrics Added) ---
+    async function registerUser(){
+      if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}
+      
+      try{
+        // --- START TIMER: Transaction Response Time ---
+        window.txStartTime = performance.now(); 
+        
+        const tx=await contract.register();
+        
+        showMsg('registerMessage',`Confirm registration in MetaMask... Tx Hash: ${tx.hash}`, true);
+        
+        const receipt = await tx.wait(); // Wait for mining
+        
+        // --- LOG METRICS ---
+        logTxMetrics(receipt);
+        
+        showMsg('registerMessage','Registered successfully!');
+      }catch(e){
+        // Clear metrics on failure
+        showMsg('txTime', '', true);
+        showMsg('gasCost', '', true);
+        
+        showMsg('registerMessage', e.error?.message || e.message || 'Registration failed.',false);
+      }
+    }
     
-    // FINAL SECURE AUTHENTICATION FUNCTION (Single Signature, No Transaction)
+    // --- MODIFIED authenticateUser (Auth Time Metric Added) ---
     async function authenticateUser(){
       if(!contract){showMsg('authMessage','Connect wallet first',false);return;}
+      
+      // --- START TIMER: Authentication Time ---
+      const authStartTime = performance.now();
       
       try {
         // --- STEP 1: Get the current nonce/challenge from the contract ---
@@ -378,15 +460,24 @@
         // --- STEP 4: Send the signature and nonce to the contract for VERIFICATION (READ-ONLY) ---
         showMsg('authMessage','Signature confirmed. Verifying credentials...', true);
         
-        // Use the provider instance for READ-ONLY calls. We use callStatic to simulate the transaction.
         const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
         
-        // Pass signature AND nonce, and explicitly set the caller address ('from') for msg.sender in the contract
         const isAuthenticated = await readOnlyContract.callStatic.authenticateWithSignature(
             signature, 
             nonce, 
             { from: currentAccount }
         );
+        
+        // --- END TIMER: Authentication Time ---
+        const authEndTime = performance.now();
+        const duration = (authEndTime - authStartTime).toFixed(2);
+        
+        // --- Log/Display Result ---
+        showMsg('authTime', `✅ Authentication Time: **${duration} ms** (Signature to Verification)`, true);
+        
+        // Clear Tx metrics as this is a read operation
+        showMsg('txTime', '', true);
+        showMsg('gasCost', '', true);
         
         if (isAuthenticated) {
             
@@ -404,13 +495,69 @@
           } else {
              showMsg('authMessage', `Authentication Failed: ${errorMsg}`, false);
           }
+          
+          // Clear Auth metric on failure
+          showMsg('authTime', '', true);
       }
     }
     
-    async function deactivateAccount(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try { const tx=await contract.deactivateAccount(); showMsg('registerMessage', 'Confirm deactivation in MetaMask...'); await tx.wait(); showMsg('registerMessage','Account deactivated successfully.');} catch(e) { showMsg('registerMessage', e.error?.message || e.message || 'Deactivation failed.', false); }}
+    // --- MODIFIED deactivateAccount (Transaction Metrics Added) ---
+    async function deactivateAccount(){
+      if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}
+      
+      try { 
+        // --- START TIMER: Transaction Response Time ---
+        window.txStartTime = performance.now(); 
+        
+        const tx=await contract.deactivateAccount(); 
+        
+        showMsg('registerMessage', `Confirm deactivation in MetaMask... Tx Hash: ${tx.hash}`, true); 
+        
+        const receipt = await tx.wait();
+        
+        // --- LOG METRICS ---
+        logTxMetrics(receipt);
+        
+        showMsg('registerMessage','Account deactivated successfully.');
+      } catch(e) { 
+        // Clear metrics on failure
+        showMsg('txTime', '', true);
+        showMsg('gasCost', '', true);
+        
+        showMsg('registerMessage', e.error?.message || e.message || 'Deactivation failed.', false); 
+      }
+    }
     
-    async function setProfileCid(){if(!contract){showMsg('profileMessage','Connect wallet first',false);return;}const cid=el('profileCid').value.trim();if(!cid){showMsg('profileMessage','Please enter a Profile CID or pointer.',false);return;}try{const tx=await contract.setProfileCID(cid); showMsg('profileMessage', 'Confirm saving profile CID in MetaMask...'); await tx.wait();showMsg('profileMessage','Profile CID saved successfully!');} catch(e) {showMsg('profileMessage', e.error?.message || e.message || 'Failed to save Profile CID.',false);}}
+    // --- MODIFIED setProfileCid (Transaction Metrics Added) ---
+    async function setProfileCid(){
+      if(!contract){showMsg('profileMessage','Connect wallet first',false);return;}
+      const cid=el('profileCid').value.trim();
+      if(!cid){showMsg('profileMessage','Please enter a Profile CID or pointer.',false);return;}
+      
+      try{
+        // --- START TIMER: Transaction Response Time ---
+        window.txStartTime = performance.now(); 
+        
+        const tx=await contract.setProfileCID(cid); 
+        
+        showMsg('profileMessage', `Confirm saving profile CID in MetaMask... Tx Hash: ${tx.hash}`, true); 
+        
+        const receipt = await tx.wait();
+        
+        // --- LOG METRICS ---
+        logTxMetrics(receipt);
+        
+        showMsg('profileMessage','Profile CID saved successfully!');
+      } catch(e) {
+        // Clear metrics on failure
+        showMsg('txTime', '', true);
+        showMsg('gasCost', '', true);
+        
+        showMsg('profileMessage', e.error?.message || e.message || 'Failed to save Profile CID.',false);
+      }
+    }
 
+    // --- MODIFIED updateDID (Transaction Metrics Added) ---
     async function updateDID() {
       if (!contract) { showMsg('rotateMessage', 'Connect wallet first', false); return; }
       
@@ -427,15 +574,27 @@
       }
       
       try {
+        // --- START TIMER: Transaction Response Time ---
+        window.txStartTime = performance.now(); 
+        
         showMsg('rotateMessage', `Confirm key rotation to ${newWallet} in MetaMask...`, true);
+        
         const tx = await contract.updateDID(newWallet);
-        await tx.wait();
+        const receipt = await tx.wait();
+        
+        // --- LOG METRICS ---
+        logTxMetrics(receipt);
         
         showMsg('rotateMessage', `✅ DID successfully rotated! Your identity is now controlled by ${newWallet}. Please disconnect and reconnect with the new wallet.`, true, 8000);
         disconnect(); 
         
       } catch (e) {
         console.error("Key Rotation Error:", e);
+        
+        // Clear metrics on failure
+        showMsg('txTime', '', true);
+        showMsg('gasCost', '', true);
+        
         showMsg('rotateMessage', e.error?.message || e.message || 'Key rotation failed. Check console for details.', false);
       }
     }
