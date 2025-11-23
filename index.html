@@ -323,6 +323,8 @@
   <script>
     // ⚠️ PASTE YOUR *NEW* AuthManager CONTRACT ADDRESS HERE
     const CONTRACT_ADDRESS = "0xAF83CC47bE66d4BE1ea74F1f23e4452fa3c76F4b";
+    // ⚠️ PASTE YOUR *NEW* PerformanceLogger CONTRACT ADDRESS HERE
+    const LOGGER_CONTRACT_ADDRESS = "0x07abf4df08a1117Ef973e90Ab20479973D2268A9"; // <-- REPLACE THIS
     
     // MODIFIED ABI: 'authenticateWithSignature' is now a view function
     const CONTRACT_ABI = [
@@ -331,16 +333,19 @@
       "function setProfileCID(string calldata cid) external",
       "function isRegistered(address user) external view returns (bool)",
       "function updateDID(address newWallet) external", 
-      
-      // NEW FUNCTIONS FOR SECURE AUTH (Challenge-Response)
       "function getNonce(address user) external view returns (uint256)", 
-      // CRITICAL ABI FIX: Now takes signature AND nonce, and is a view function
       "function authenticateWithSignature(bytes calldata signature, uint256 nonce) external view returns (bool)", 
       "event UserAccess(address indexed user, uint256 timestamp)",
       "event Authenticated(address indexed user, uint256 timestamp, uint256 nonce)"
     ];
 
-    let provider, signer, contract, currentAccount;
+    // NEW ABI FOR LOGGER CONTRACT
+    const LOGGER_ABI = [
+        "function logAuthenticationTime(address user, uint256 durationMs) external",
+        "function logTransactionPerformance(address user, string calldata functionName, uint256 gasUsed, uint256 durationMs) external",
+    ];
+
+    let provider, signer, contract, loggerContract, currentAccount;
 
     function el(id){ return document.getElementById(id); }
     function showStatus(t, ok=true){ el('status').textContent='Status: '+t; el('status').className='status '+(ok?'ok':'err'); }
@@ -351,18 +356,38 @@
       provider=new ethers.providers.Web3Provider(window.ethereum);await provider.send("eth_requestAccounts",[]);
       signer=provider.getSigner();currentAccount=await signer.getAddress();
       contract=new ethers.Contract(CONTRACT_ADDRESS,CONTRACT_ABI,signer);
+      loggerContract = new ethers.Contract(LOGGER_CONTRACT_ADDRESS, LOGGER_ABI, signer); // NEW: Initialize logger
       const n=await provider.getNetwork();el('currentAccount').textContent=currentAccount;el('networkName').textContent=n.name;showStatus('Connected',true);
       el('connectButton').style.display='none';el('disconnectButton').style.display='inline-block';
     }
     
     function disconnect(){provider=null;signer=null;contract=null;currentAccount=null;el('currentAccount').textContent='N/A';el('networkName').textContent='N/A';showStatus('Disconnected',false);el('connectButton').style.display='inline-block';el('disconnectButton').style.display='none';}
     
-    async function registerUser(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try{const tx=await contract.register();showMsg('registerMessage','Confirm registration in MetaMask...');await tx.wait();showMsg('registerMessage','Registered successfully!');}catch(e){showMsg('registerMessage', e.error?.message || e.message || 'Registration failed.',false);}}
+    async function registerUser(){
+      if(!contract || !loggerContract){showMsg('registerMessage','Connect wallet first',false);return;}
+      const startTime = Date.now(); // NEW: Start timing
+      try{
+        const tx = await contract.register();
+        showMsg('registerMessage','Confirm registration in MetaMask...');
+        const receipt = await tx.wait();
+        const durationMs = Date.now() - startTime; // NEW: Calculate duration
+        
+        // NEW: Log performance metrics (must be called by the logger contract owner)
+        const gasUsed = receipt.gasUsed.toNumber();
+        await loggerContract.logTransactionPerformance(currentAccount, "register", gasUsed, durationMs);
+
+        showMsg('registerMessage',`Registered successfully! Tx Time: ${durationMs}ms, Gas: ${gasUsed}.`,true); 
+      }catch(e){
+        showMsg('registerMessage', e.error?.message || e.message || 'Registration failed.',false);
+      }
+    }
     
     // FINAL SECURE AUTHENTICATION FUNCTION (Single Signature, No Transaction)
     async function authenticateUser(){
-      if(!contract){showMsg('authMessage','Connect wallet first',false);return;}
+      if(!contract || !loggerContract){showMsg('authMessage','Connect wallet first',false);return;}
       
+      const authStartTime = Date.now(); // NEW: Start timing for passwordless flow
+
       try {
         // --- STEP 1: Get the current nonce/challenge from the contract ---
         const nonceBigNum = await contract.getNonce(currentAccount);
@@ -378,19 +403,22 @@
         // --- STEP 4: Send the signature and nonce to the contract for VERIFICATION (READ-ONLY) ---
         showMsg('authMessage','Signature confirmed. Verifying credentials...', true);
         
-        // Use the provider instance for READ-ONLY calls. We use callStatic to simulate the transaction.
         const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
         
-        // Pass signature AND nonce, and explicitly set the caller address ('from') for msg.sender in the contract
         const isAuthenticated = await readOnlyContract.callStatic.authenticateWithSignature(
             signature, 
             nonce, 
             { from: currentAccount }
         );
         
+        const authDurationMs = Date.now() - authStartTime; // NEW: Calculate duration
+
         if (isAuthenticated) {
             
-            showMsg('authMessage','✅ Authentication successful! Access granted.', true);
+            // NEW: Log the Authentication Time (must be called by the logger contract owner)
+            await loggerContract.logAuthenticationTime(currentAccount, authDurationMs); 
+
+            showMsg('authMessage',`✅ Auth successful! Time: ${authDurationMs}ms. Access granted.`, true); 
             setTimeout(()=>window.location.href='dashboard.html', 1500); 
         } else {
             showMsg('authMessage','Authentication Failed: Signature verified but nonce was invalid.', false);
@@ -407,7 +435,24 @@
       }
     }
     
-    async function deactivateAccount(){if(!contract){showMsg('registerMessage','Connect wallet first',false);return;}try { const tx=await contract.deactivateAccount(); showMsg('registerMessage', 'Confirm deactivation in MetaMask...'); await tx.wait(); showMsg('registerMessage','Account deactivated successfully.');} catch(e) { showMsg('registerMessage', e.error?.message || e.message || 'Deactivation failed.', false); }}
+    async function deactivateAccount(){
+      if(!contract || !loggerContract){showMsg('registerMessage','Connect wallet first',false);return;}
+      const startTime = Date.now(); 
+      try { 
+        const tx=await contract.deactivateAccount(); 
+        showMsg('registerMessage', 'Confirm deactivation in MetaMask...'); 
+        const receipt = await tx.wait(); 
+        const durationMs = Date.now() - startTime;
+        const gasUsed = receipt.gasUsed.toNumber();
+        
+        // NEW: Log performance metrics (must be called by the logger contract owner)
+        await loggerContract.logTransactionPerformance(currentAccount, "deactivateAccount", gasUsed, durationMs);
+        
+        showMsg('registerMessage',`Account deactivated. Tx Time: ${durationMs}ms, Gas: ${gasUsed}.`, true); 
+      } catch(e) { 
+        showMsg('registerMessage', e.error?.message || e.message || 'Deactivation failed.', false); 
+      }
+    }
     
     async function setProfileCid(){if(!contract){showMsg('profileMessage','Connect wallet first',false);return;}const cid=el('profileCid').value.trim();if(!cid){showMsg('profileMessage','Please enter a Profile CID or pointer.',false);return;}try{const tx=await contract.setProfileCID(cid); showMsg('profileMessage', 'Confirm saving profile CID in MetaMask...'); await tx.wait();showMsg('profileMessage','Profile CID saved successfully!');} catch(e) {showMsg('profileMessage', e.error?.message || e.message || 'Failed to save Profile CID.',false);}}
 
